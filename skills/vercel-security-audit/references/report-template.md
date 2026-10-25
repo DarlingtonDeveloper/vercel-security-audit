@@ -117,7 +117,7 @@ Status meanings: satisfactory meets the scoped requirement; action_recommended h
 
 ## Optional normalized evidence example
 
-JSON is optional; readable Markdown evidence is sufficient. This synthetic example is illustrative, not a required schema. Use the same topic IDs, statuses and evidence fields in both formats. Store only sanitised evidence approved for the intended audience.
+JSON is optional; readable Markdown evidence is sufficient. This synthetic example is illustrative, not a required schema. Use the same topic IDs, statuses and evidence fields in both formats. Store only sanitised evidence approved for the intended audience. For the separate canonical schema and optional append/rebuild CLI, read [report model](report-model.md); this compact observation is not a full versioned report or append patch. Portable Markdown remains the mandatory fallback.
 
 ```json
 {
