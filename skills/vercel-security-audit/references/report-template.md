@@ -46,6 +46,15 @@ List at most three evidence-backed priorities, ordered by owner-relevant impact 
 
 Unavailable fields mean unknown, not disabled. An optional policy being off is not automatically a vulnerability. Plan limitations are not misconfigurations. A metadata change does not prove credential rotation; age does not prove a project is unused. Code or Git organization names do not prove ownership. Platform API authentication does not establish application authentication.
 
+### Optional scope decisions
+
+Record consent per named source/application, not one global optional-scope yes/no. Reuse explicit decisions already given; do not repeat resolved questions. A full review request alone does not authorise these reads. Keep optional coverage separate from all 24 core outcomes. For each record include accepted/declined/partial, consent provenance/date, material aliases, authorised read boundaries and exclusions. Unauthorised checks stay not_reviewed with reason unauthorised, not a core failure; partial coverage must identify both the inspected material and unreviewed remainder.
+
+- DEP-04 - Application authentication boundaries: [decision; named source/application; consent provenance/date; included material; exclusions; coverage/status].
+- SRC-04 - Repository governance evidence: [decision; named source/application; consent provenance/date; included material; exclusions; coverage/status].
+- SEC-04 - Secret handling and log redaction design: [decision; named source/application; consent provenance/date; included material; exclusions; coverage/status].
+- OPS-04 - Application recovery design: [decision; named source/application; consent provenance/date; included material; exclusions; coverage/status].
+
 ## Coverage limits
 
 This block is mandatory even when there are no known limits. Repeat the record below for every source/feed used or planned, including unavailable sources. Write unknown for unavailable facts, not zero; if no collection occurred, say so. If no known limits remain, explicitly state that conclusion and its verified basis rather than omitting this block. Follow [pagination and bounded collection](capabilities.md#pagination-and-bounded-collection).
