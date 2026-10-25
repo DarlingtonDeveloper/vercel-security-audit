@@ -46,7 +46,9 @@ Prefer existing authenticated connections. For a CLI session, confirm identity w
 
 Record permission for team-wide inventory and configuration reads separately from selected-project review. A project-only request does not authorise team-wide member, security, activity, webhook or integration collection. Use verified server-side project filtering, obtain explicit broader read permission, or leave that check unreviewed; filtering after collection cannot repair an authorisation gap.
 
-Completion: record the approved scope, account/team confirmation and a capability map. Unsupported tools or insufficient permissions are gaps, not reasons to obtain broader access.
+Before inventory or product checks, read and complete [preflight and collection plan](references/collection-plan.md): authenticate the browser through user handoff, confirm connector/CLI and browser account/team match, and record actual host browser capabilities and read OAuth scopes or equivalent grants. Do not auto-login or change settings. If browser authentication or privacy gates prevent collection, record limited scope and obtain explicit user confirmation to continue API-only, or pause; noninteractive hosts pause for that decision. A confirmed limited-scope review can still produce portable Markdown.
+
+Completion: record the approved scope, identity match or confirmed API-only boundary, capability map and per-check collection plan. Classify each check as API-readable, dashboard-only, owner statement or unavailable. Unsupported tools or insufficient permissions are gaps, not reasons to obtain broader access.
 
 ### 2. Inventory and run product checks
 
@@ -90,7 +92,7 @@ Completion: each proposed action has evidence, a business reason, documented pre
 
 ### 5. Draft the guided report
 
-Read [report template](references/report-template.md). Write `security-audit.md`; also write `security-audit.json` when the host can produce the template's structured evidence. Use a new, private output location and preserve existing files. If the host cannot write files, return the report in the conversation and state that limitation.
+Finish one planned collection pass and reconcile every authorised checklist ID with actual evidence or a gap before the first report; follow [collection plan](references/collection-plan.md). Do not present planned or failed reads as successful collection. Read [report template](references/report-template.md). Write `security-audit.md`; also write `security-audit.json` when the host can produce the template's structured evidence. Use a new, private output location and preserve existing files. If the host cannot write files, return the report in the conversation and state that limitation.
 
 Lead with what is confirmed to be working and at most three initial priorities. Be reassuring without claiming everything is safe. Separate customer-coordinated steps from tasks needing IT or developers. Each recommendation includes a responsible role, numbered steps, a completion check and change/rollback considerations. Write in the requested language and technical level.
 
