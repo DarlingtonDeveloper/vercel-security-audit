@@ -26,7 +26,7 @@ Use exactly one status per check, plus a concise evidence-based rationale and ev
 - `action_recommended`: evidence supports a specific improvement against an agreed requirement or documented risk; explain the benefit and tradeoff without claiming exploitability.
 - `needs_confirmation`: attempted review has missing, ambiguous, conflicting, or owner-dependent evidence; state the precise unanswered question.
 - `not_reviewed`: not inspected; state why, including declined optional scope, unavailable capability, or time boundary.
-- `not_applicable`: verified facts establish that the check does not apply; name those facts. Unavailable access alone is not this status.
+- `not_applicable`: verified, current feature-specific account facts and public documentation establish non-applicability; name those facts and dates. Unavailable access, a 403 or an upgrade prompt alone is not this status. Apply the per-feature and mixed-check rules in [evidence assessment](evidence-assessment.md).
 
 ## Required core: identity and access
 
