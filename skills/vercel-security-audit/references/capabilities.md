@@ -87,6 +87,8 @@ Construct URLs only from team/project slugs already verified by inventory. Prefe
 
 Read switch state or structured control attributes when available. Text such as Configure, Save, Require Separate Values or Owner count is balanced is not itself an enabled state or exact count. If only bounded text is available, positive-looking results need confirmation until completeness and the control state are established.
 
+Before any browser navigation or capture, read [browser-evidence.md](browser-evidence.md) for actual-page sensitivity classification, screenshot-only constraints, per-check safe owner questions and incident handling. A Security Dashboard may include users/projects and is not blanket safe. Credential/token, sharing/bypass, environment and integration pages need the same pre-model gate as member views. Human navigation does not grant automatic model exposure.
+
 Browser fallback has the same pre-exposure gate as CLI output. Verify that navigation, snapshots and automatic screenshots do not expose the full sensitive page before field selection. A crop after an image or body has already entered model context is too late. If safe pre-output selection is unavailable, do not automate member, credential or environment views; ask for non-sensitive aggregate metadata, label it as an owner statement, or record not_reviewed. This skill provides instructions, not a browser redaction implementation.
 
 Screenshots are optional evidence, not a reason to capture full pages of member emails or credential settings. Crop/select safe controls before any model exposure or saving; otherwise record non-sensitive state and provenance instead. Disable network-body/HAR recording and avoid token-management pages that reveal values.
