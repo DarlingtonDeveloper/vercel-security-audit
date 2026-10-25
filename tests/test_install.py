@@ -103,7 +103,7 @@ class RelocatedBundleTests(unittest.TestCase):
                     shutil.copytree(SKILL_DIR, installed, ignore=shutil.ignore_patterns("__pycache__"))
                     text = (installed / "SKILL.md").read_text(encoding="utf-8")
                     for reference in re.findall(r"\]\((references/[^)]+)\)", text):
-                        self.assertTrue((installed / reference).is_file(), reference)
+                        self.assertTrue((installed / reference.split("#", 1)[0]).is_file(), reference)
                     output = root / (location + ".html")
                     result = subprocess.run(
                         [sys.executable, "-B", str(installed / "scripts" / "render_report.py"),
