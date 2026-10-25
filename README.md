@@ -32,25 +32,64 @@ The Vercel plugin has workflows that write configuration. This audit uses only t
 
 ## Install
 
-Run from the project where you want to use the skill:
+### Project install
+
+Run from the project where you want to use the skill. Without --global, the Skills CLI installs at project scope:
 
 ```sh
 npx skills add DarlingtonDeveloper/vercel-security-audit --skill vercel-security-audit
 ```
 
-For Eve, select the host explicitly:
+For an agent-specific install, select the host with --agent (or -a). For example, Eve:
 
 ```sh
 npx skills add DarlingtonDeveloper/vercel-security-audit --skill vercel-security-audit --agent eve
 ```
 
-To list available skills without installing:
+The Skills CLI lists Eve's project location as agent/skills. For Grok Build, the supported agent identifier is grok. Follow each host's instructions for connecting CLI credentials and browser tools.
+
+### Global install
+
+Use --global (or -g) for a user-level install available across projects in supported hosts:
+
+```sh
+npx skills add DarlingtonDeveloper/vercel-security-audit --skill vercel-security-audit --global
+```
+
+Global scope and agent selection are separate options. For example, target Grok Build globally:
+
+```sh
+npx skills add DarlingtonDeveloper/vercel-security-audit --skill vercel-security-audit --global --agent grok
+```
+
+The inspected Skills CLI source does not support global installs for Eve; use its project install instead. Global locations vary by host, so use the installer's reported location rather than guessing a loader path.
+
+To list available skills without installing a skill:
 
 ```sh
 npx skills add DarlingtonDeveloper/vercel-security-audit --list
 ```
 
-The Skills CLI lists Eve's project location as agent/skills. For Grok Build, the supported agent identifier is grok. Follow each host's instructions for connecting CLI credentials and browser tools.
+These flags and agent limitations were verified against public Skills CLI [help source](https://github.com/vercel-labs/skills/blob/a80e4c9d12d607631249d4d7d059f835d4b2f13a/src/cli.ts#L174-L183), [option parsing](https://github.com/vercel-labs/skills/blob/a80e4c9d12d607631249d4d7d059f835d4b2f13a/src/add.ts#L2585-L2604) and [agent definitions](https://github.com/vercel-labs/skills/blob/a80e4c9d12d607631249d4d7d059f835d4b2f13a/src/agents.ts#L320-L331). No installer was run to verify them. Running an npx example yourself may download the CLI if it is not cached.
+
+### Manual central agent-library install
+
+For a host-managed central library, copy the complete skills/vercel-security-audit/ directory from a checkout of this repository, not just SKILL.md. Keep references/, scripts/ and assets/ (including assets/fonts/ and its licence/provenance files) beside SKILL.md with their relative layout unchanged. The Skills CLI's [directory installer](https://github.com/vercel-labs/skills/blob/a80e4c9d12d607631249d4d7d059f835d4b2f13a/src/installer.ts#L517-L549) also copies the skill directory recursively.
+
+From the repository root, replace the placeholder below with your host-configured skill-library directory. It is not a universal loader path. The copy runs only if the destination does not already exist; review an existing install separately rather than merging or overwriting it:
+
+```sh
+skill_library="/absolute/path/to/your/host-configured-skill-library"
+mkdir -p "$skill_library"
+test ! -e "$skill_library/vercel-security-audit" &&
+  cp -R skills/vercel-security-audit "$skill_library/vercel-security-audit"
+```
+
+Use the host's documented library registration/reload procedure, then confirm it loads that directory's SKILL.md and can read its sibling helpers. A directory elsewhere on disk is not automatically discovered by every host. Resolve helper paths from the installed skill directory (following any host-created symlink), never from the audit project's working directory.
+
+Startup must read all four references. Missing essential references produce an installation integrity error before account reads: reinstall or recopy the complete bundle. Missing renderer/assets/fonts or export tools only disable styled HTML/PDF export; warn and retain the Markdown report, without failing the audit or installing packages. Python and a report-export browser are optional, not Markdown-only prerequisites.
+
+### Vercel tools
 
 Where supported, the official Vercel plugin is installed separately with:
 
@@ -79,7 +118,7 @@ Installation does not authenticate your Vercel account or run an audit. Complete
 - skills/vercel-security-audit/scripts/render_report.py: standard-library Markdown-to-HTML renderer.
 - skills/vercel-security-audit/assets/: print styles, HTML template, pinned Geist fonts and their licence notices.
 - examples/security-audit.md: synthetic layout example, not a real audit.
-- tests/test_skill.py and tests/test_renderer.py: packaging, guardrail, renderer and public-content checks.
+- tests/test_skill.py, tests/test_renderer.py and tests/test_install.py: packaging, guardrail, renderer, install-location and public-content checks.
 - evals/scenarios.md: behaviour cases for a future live host evaluation.
 
 CLI command syntax was inspected using installed Vercel CLI 62.7.0 help, without reading an account. Canonical CLI security and firewall documentation was fetched successfully. This is not a live security audit or proof of end-to-end host compatibility.
