@@ -56,7 +56,7 @@ Completion: record the approved scope, identity match or confirmed API-only boun
 
 Read the complete [checklist](references/checklist.md). Route every core and separately authorised optional ID through the per-check map: authenticated MCP first where verified safe, documented CLI fallback where available, then safe browser evidence or an explicit gap. Use `vercel security check` only as an available fallback after inspecting current help. Read actual product check names/statuses; do not invent slugs or equivalents. Passing is bounded to the returned product check, inspected subsetting and explicit scope, not the whole checklist ID or team.
 
-Account for pagination and finding limits. Product summary counts and the individually inspected findings are different coverage measures. Preserve muted findings and their stated reason in the review, without muting or unmuting anything.
+Account for pagination and finding limits using [pagination and bounded collection](references/capabilities.md#pagination-and-bounded-collection). Record per-source/feed windows, totals, received/inspected counts, caps, truncation, cursor/end knowledge and missing/failed reads with retry outcomes for the report's Coverage limits block. Product summary counts and the individually inspected findings are different coverage measures. Preserve muted findings and their stated reason in the review, without muting or unmuting anything.
 
 Select deeper project coverage using business criticality, traffic, data sensitivity, exposure and known integrations. If the user authorises a sample, state exactly which projects were inspected. Deployment recency alone does not establish whether a project is live or unused.
 
@@ -104,7 +104,7 @@ Lead with what is confirmed to be working and at most three initial priorities. 
 
 Read [report design](references/report-design.md) for styled export. When Python 3 is available, use the bundled offline HTML renderer and Geist assets after reviewing the Markdown. Keep its community-maintained, unofficial identity; do not add official Vercel branding. PDF is optional and should be exported from that HTML through an installed, approved browser or renderer. Keep the Markdown if rendering is unavailable. Do not install packages or upload evidence merely to produce a PDF. Inspect all rendered pages and retain the source.
 
-Completion: the report identifies reviewed and unreviewed coverage, contains no secrets, and does not imply remediation or delivery happened.
+Completion: the report includes the mandatory Coverage limits block for every source/feed, explicitly recording limits even when none are known. It identifies reviewed and unreviewed coverage, contains no secrets, and does not imply remediation or delivery happened.
 
 ### 6. Human review and handoff
 
