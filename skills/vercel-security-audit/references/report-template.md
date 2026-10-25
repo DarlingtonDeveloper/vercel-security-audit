@@ -46,13 +46,22 @@ List at most three evidence-backed priorities, ordered by owner-relevant impact 
 
 Unavailable fields mean unknown, not disabled. An optional policy being off is not automatically a vulnerability. Plan limitations are not misconfigurations. A metadata change does not prove credential rotation; age does not prove a project is unused. Code or Git organization names do not prove ownership. Platform API authentication does not establish application authentication.
 
+### Optional scope decisions
+
+Record consent per checklist ID and named source/application, not a global yes/no. Reuse established decisions; a full review request does not authorize optional reads. For each record include not_requested/accepted/declined/partial, Owner self-statement provenance and UTC approval time when accepted, named material aliases, approved read boundaries, exclusions, and coverage/status. Declined or unrequested checks remain not_reviewed with no collected optional evidence. Partial review identifies both inspected material and the unreviewed remainder.
+
+- DEP-04 - Application authentication boundaries: [decision; named material/scope aliases; consent provenance/date; read boundaries; exclusions; coverage/status].
+- SRC-04 - Repository governance evidence: [decision; named material/scope aliases; consent provenance/date; read boundaries; exclusions; coverage/status].
+- SEC-04 - Secret handling and log redaction design: [decision; named material/scope aliases; consent provenance/date; read boundaries; exclusions; coverage/status].
+- OPS-04 - Application recovery design: [decision; named material/scope aliases; consent provenance/date; read boundaries; exclusions; coverage/status].
+
 ## Coverage limits
 
-This block is mandatory even when there are no known limits. Repeat the record below for every source/feed used or planned, including unavailable sources. Write unknown for unavailable facts, not zero; if no collection occurred, say so. If no known limits remain, explicitly state that conclusion and its verified basis rather than omitting this block. Follow [pagination and bounded collection](capabilities.md#pagination-and-bounded-collection).
+This block is mandatory even when there are no known limits, including in a draft with no collection. Record every source/feed used or planned, including unavailable sources. Write unknown for unavailable facts, not zero; if no collection occurred, say so. No feeds recorded means coverage is unknown, not complete. If no known limits remain, explicitly state that conclusion and its verified basis. Follow [pagination and bounded collection](capabilities.md#pagination-and-bounded-collection) and see [report model](report-model.md#coverage-feed-records) for the optional structured representation.
 
 ### [Source/feed alias]
 
-- Source/feed: [verified tool/view description, scoped aliases, observation date and associated check IDs].
+- Source/feed: [verified tool/view description, scoped aliases, observation UTC and associated check IDs; planned or used].
 - Window: [requested and actually covered start/end UTC; retention boundary or unknown].
 - Reported total: [product-reported count and what it measures, or unknown].
 - Received: [unique records received; deduplication/overlap limits or unknown].
@@ -62,11 +71,11 @@ This block is mandatory even when there are no known limits. Repeat the record b
 - Cursor availability: [available/unavailable/unknown; supported continuation semantics, without raw cursor values].
 - End known: [yes/no/unknown; verified end-of-list evidence, not an assumption from a count or absent cursor].
 - Missing sources: [unavailable or uncollected feeds/windows and reason, or none verified].
-- Timeouts/failures: [sanitized failure type, affected window and retained partial coverage; none if verified].
-- Retries and outcomes: [attempt time, approved window, outcome and remaining gaps for each retry; or not attempted and why].
+- Timeouts/failures: [sanitized failure type and outcome, affected window and retained partial coverage; no raw errors; none if verified].
+- Retries and outcomes: [attempt time in UTC, approved window, outcome and remaining gaps for each retry; or not attempted and why].
 - Assessment effect: [bounded conclusions, needs_confirmation/not_reviewed checks and precise unresolved coverage; no absence claim from partial results].
 
-A count of 100 is not completeness. No cursor without a verified end, truncation, or a bounded retry after a failed wider query remains a coverage gap, not proof that events or resources do not exist.
+A count of 100 is not completeness. No cursor without a verified end, truncation, or a bounded retry after a failed wider query remains a coverage gap, not proof that events or resources do not exist. State any verified conclusion that no limits remain and its basis explicitly rather than omitting this block.
 
 ## Recommendations
 
@@ -99,6 +108,22 @@ Verify documentation against current public sources before sharing instructions.
 - Deferred checks: [topic IDs and explicit reason for deferral].
 - Suggested recheck: [owner-chosen trigger or date, without implying automatic monitoring].
 - Completion boundary: [all 24 core statuses recorded, optional scope recorded separately, limitations visible, evidence redacted, and recommendations tied to evidence].
+
+### Owner confirmation questionnaire
+
+Include all three groups for Owners within the agreed scope. Reuse supplied answers without re-asking resolved questions. No automatic DMs, emails, bot requests, notification events or other outreach: any communication requires separate approval of exact final content and destination. Do not inspect another Owner's personal metadata or broaden access to complete an answer.
+
+Keep answers as timestamped Owner self-statements (`source_kind: owner_statement`), not observed configuration. Record related check, scope alias, responding role alias, UTC statement time, metadata observation time if known, and separately observed evidence references. Missing facts and dates remain unavailable/unknown, not inferred from the report date. Unanswered groups remain explicitly not answered; an answer does not promote a check status.
+
+```text
+1. CRE-01: Using only your own current metadata in the agreed scope, what is your scoped token count, and what scope and expiry metadata is visible? Give redacted aggregate counts and expiry coverage only, or say unavailable. If expiry is not_applicable, state the verified reason, such as a verified zero-token inventory. Do not supply token values, token strings, sensitive token names or credential screenshots. Metadata dates alone do not prove rotation or actual use.
+
+2. IAM-02: Does your own MFA posture meet the agreed policy, and is recoverability arranged within that policy? Record the agreed requirement or mark it unresolved. Confirm policy compliance, recoverability and unresolved exceptions at a non-secret level only. Do not supply passwords, recovery codes, authentication method secrets, device identifiers or setup details. Your statement does not establish team-wide enrolment or enforcement.
+
+3. OPS-01: Can you confirm incident delivery ownership and escalation responsibility for this scope? Identify responsible roles and non-sensitive subscription/delivery arrangements, not endpoints, webhook URLs, email addresses, names or recipient identifiers. Distinguish configured metadata from an Owner statement about delivery readiness. Actual delivery remains unverified unless separately verified through an approved procedure. This questionnaire does not authorize a delivery test.
+
+For every answer, give the scope alias, role alias, UTC statement time and metadata observation time if known. Say unavailable for facts you cannot confirm; do not request elevated credentials or inspect another Owner's credentials to answer.
+```
 
 ## Appendix: check outcomes
 

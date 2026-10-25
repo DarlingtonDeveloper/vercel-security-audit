@@ -104,7 +104,7 @@ Lead with what is confirmed to be working and at most three initial priorities. 
 
 Read [report design](references/report-design.md) for styled export. When Python 3 is available, use the bundled offline HTML renderer and Geist assets after reviewing the Markdown. Keep its community-maintained, unofficial identity; do not add official Vercel branding. PDF is optional and should be exported from that HTML through an installed, approved browser or renderer. Keep the Markdown if rendering is unavailable. Do not install packages or upload evidence merely to produce a PDF. Inspect all rendered pages and retain the source.
 
-Completion: the report includes the mandatory Coverage limits block for every source/feed, explicitly recording limits even when none are known. It identifies reviewed and unreviewed coverage, contains no secrets, and does not imply remediation or delivery happened.
+Completion: the report includes the mandatory Coverage limits block for every source/feed, explicitly recording limits even when none are known, per-ID optional scope decisions, and all three Owner confirmation question groups with provided answers or explicit not-answered states. It identifies reviewed and unreviewed coverage, contains no secrets, and does not imply remediation or delivery happened.
 
 ### 6. Human review and handoff
 
