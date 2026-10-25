@@ -80,7 +80,7 @@ Completion: every finding has the correct source, timestamp, scope and evidence 
 
 ### 4. Assess findings and verify recommendations
 
-Use these states consistently:
+Read [evidence assessment](references/evidence-assessment.md) before assigning statuses, especially when sources conflict or describe different scopes or dates. Use these states consistently:
 
 - satisfactory: explicit, sufficiently complete evidence meets the scoped requirement.
 - action_recommended: evidence establishes a relevant configuration or process gap.
