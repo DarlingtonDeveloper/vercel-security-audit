@@ -4,6 +4,8 @@ Review configuration visible through the user's own authenticated Vercel account
 
 ## Scope and evidence rules
 
+Read [evidence assessment](evidence-assessment.md) before assigning statuses. Resolve each claim by scope, time and completeness; do not rank one source above all others.
+
 - Required core: assess all 24 core checks across the eight domains below. Record a status and rationale for every check, including unavailable checks; required does not mean every optional control must be enabled.
 - Optional deeper review: four additional checks require explicit authorization for named, owner-controlled source/application material. Record them separately; declining them does not fail the core review.
 - Use public Vercel plugin/CLI capabilities for supported reads. Use the browser in the owner's own-team dashboard to verify gaps. Resolve actual tools and supported reads through sibling [capabilities.md](capabilities.md). This reference supplies no command flags or assumed UI paths.
