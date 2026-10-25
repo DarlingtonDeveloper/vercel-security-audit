@@ -48,12 +48,12 @@ Unavailable fields mean unknown, not disabled. An optional policy being off is n
 
 ### Optional scope decisions
 
-Record consent per checklist ID and named source/application, not a global yes/no. Reuse established decisions; a full review request does not authorize optional reads. For each record include not_requested/accepted/declined/partial, Owner self-statement provenance and UTC approval time when accepted, named material aliases, approved read boundaries, exclusions, and coverage/status. Declined or unrequested checks remain not_reviewed with no collected optional evidence. Partial review identifies both inspected material and the unreviewed remainder.
+Record consent per checklist ID and named source/application, not one global optional-scope yes/no. Reuse explicit decisions already given; do not repeat resolved questions. A full review request alone does not authorise these reads. Keep optional coverage separate from all 24 core outcomes. For each record include not_requested/accepted/declined/partial, Owner self-statement provenance and UTC approval time when accepted, named material aliases, authorised read boundaries and exclusions. Unauthorised checks stay not_reviewed with no collected optional evidence and reason unauthorised, not a core failure; partial coverage must identify both the inspected material and unreviewed remainder.
 
-- DEP-04 - Application authentication boundaries: [decision; named material/scope aliases; consent provenance/date; read boundaries; exclusions; coverage/status].
-- SRC-04 - Repository governance evidence: [decision; named material/scope aliases; consent provenance/date; read boundaries; exclusions; coverage/status].
-- SEC-04 - Secret handling and log redaction design: [decision; named material/scope aliases; consent provenance/date; read boundaries; exclusions; coverage/status].
-- OPS-04 - Application recovery design: [decision; named material/scope aliases; consent provenance/date; read boundaries; exclusions; coverage/status].
+- DEP-04 - Application authentication boundaries: [decision; named source/application; consent provenance/date; included material; exclusions; coverage/status].
+- SRC-04 - Repository governance evidence: [decision; named source/application; consent provenance/date; included material; exclusions; coverage/status].
+- SEC-04 - Secret handling and log redaction design: [decision; named source/application; consent provenance/date; included material; exclusions; coverage/status].
+- OPS-04 - Application recovery design: [decision; named source/application; consent provenance/date; included material; exclusions; coverage/status].
 
 ## Coverage limits
 
@@ -111,18 +111,20 @@ Verify documentation against current public sources before sharing instructions.
 
 ### Owner confirmation questionnaire
 
-Include all three groups for Owners within the agreed scope. Reuse supplied answers without re-asking resolved questions. No automatic DMs, emails, bot requests, notification events or other outreach: any communication requires separate approval of exact final content and destination. Do not inspect another Owner's personal metadata or broaden access to complete an answer.
+Include all three question groups in the report handed to the user, for each Owner within the agreed scope; do not collect other Owners' personal metadata through one person's account. Reuse already supplied confirmations without re-asking resolved questions. No automatic DMs, emails, bot requests or other outreach: any communication requires separate approval of the exact final content and destination. Do not send test messages or notification events during the review.
 
-Keep answers as timestamped Owner self-statements (`source_kind: owner_statement`), not observed configuration. Record related check, scope alias, responding role alias, UTC statement time, metadata observation time if known, and separately observed evidence references. Missing facts and dates remain unavailable/unknown, not inferred from the report date. Unanswered groups remain explicitly not answered; an answer does not promote a check status.
+Keep replies as Owner self-statements (`source_kind: owner_statement`), separate from directly observed configuration. For each question record the related check, scope alias, responding role alias, answer or unavailable, UTC statement time, UTC metadata observation time if known, and any separately observed evidence reference. Missing dates remain unknown, not inferred from the report date. Unanswered groups remain explicitly not answered; an answer does not promote a check status. Do not collect personal identifiers to prove authorship. State precisely which facts are still unresolved; an attempted review with unavailable or conflicting facts remains needs_confirmation (or not_reviewed if never collected). An Owner statement is not a substitute for missing direct visibility. Apply [evidence assessment](evidence-assessment.md) to conflicts and not_applicable claims; do not broaden access or request elevated credentials to complete the questionnaire.
 
 ```text
-1. CRE-01: Using only your own current metadata in the agreed scope, what is your scoped token count, and what scope and expiry metadata is visible? Give redacted aggregate counts and expiry coverage only, or say unavailable. If expiry is not_applicable, state the verified reason, such as a verified zero-token inventory. Do not supply token values, token strings, sensitive token names or credential screenshots. Metadata dates alone do not prove rotation or actual use.
+Owner confirmation questions for [approved scope alias]
 
-2. IAM-02: Does your own MFA posture meet the agreed policy, and is recoverability arranged within that policy? Record the agreed requirement or mark it unresolved. Confirm policy compliance, recoverability and unresolved exceptions at a non-secret level only. Do not supply passwords, recovery codes, authentication method secrets, device identifiers or setup details. Your statement does not establish team-wide enrolment or enforcement.
+1. CRE-01: Using only your own current metadata in the agreed scope, what is your scoped token count, and what scope and expiry metadata is visible? Give redacted aggregate counts and expiry coverage only, or say unavailable. If expiry is not_applicable, state the verified reason (for example, a verified zero-token inventory); missing visibility is not non-applicability. Do not supply token values, token strings, sensitive token names or screenshots revealing credentials. Metadata dates alone do not prove rotation or actual use.
 
-3. OPS-01: Can you confirm incident delivery ownership and escalation responsibility for this scope? Identify responsible roles and non-sensitive subscription/delivery arrangements, not endpoints, webhook URLs, email addresses, names or recipient identifiers. Distinguish configured metadata from an Owner statement about delivery readiness. Actual delivery remains unverified unless separately verified through an approved procedure. This questionnaire does not authorize a delivery test.
+2. IAM-02: Does your own MFA posture meet the agreed policy [record the agreed requirement, or mark it unresolved], and is recoverability arranged within that policy? Confirm policy compliance, recoverability and any unresolved exception at a non-secret level only. Do not provide passwords, recovery codes, authentication method secrets, device identifiers or setup details. Your statement does not establish team-wide enrolment or enforcement.
 
-For every answer, give the scope alias, role alias, UTC statement time and metadata observation time if known. Say unavailable for facts you cannot confirm; do not request elevated credentials or inspect another Owner's credentials to answer.
+3. OPS-01: Can you confirm incident delivery ownership and escalation responsibility for this scope? Identify responsible roles and non-sensitive subscription/delivery arrangements, not endpoints, webhook URLs, email addresses or other recipient identifiers. Distinguish configured subscription metadata from an Owner statement about delivery readiness. If actual delivery has not been verified through a separately approved procedure, say that it remains unverified; this questionnaire does not authorise a delivery test.
+
+For every answer, give the scope alias, role alias, UTC statement time and current metadata observation time if known. Say unavailable for facts you cannot confirm. Do not obtain broader access or inspect another Owner's credentials to answer.
 ```
 
 ## Appendix: check outcomes

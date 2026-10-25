@@ -150,7 +150,7 @@ Use exactly one status per check, plus a concise evidence-based rationale and ev
 
 ## Optional deeper authorized source/application review
 
-Inspect only explicitly authorized owner-controlled material, read-only. No repository commands, application requests, scans, test execution, or exploit reproduction are implied. Unavailable material remains a recorded gap.
+Inspect only explicitly authorized owner-controlled material, read-only, with consent per named source/application. Record accepted, declined or partial inclusion for each optional ID, consent provenance/date, material aliases and exclusions. A full review request prompts one optional-scope decision, not automatic inclusion; do not re-ask decisions already explicitly given. Unauthorised optional checks remain not_reviewed with reason unauthorised, separately from the 24 core outcomes; declining optional scope does not fail the core review. For partial consent, assess only approved material and record the remainder as unreviewed, without claiming whole-application coverage. No repository commands, application requests, scans, test execution, or exploit reproduction are implied. Unavailable material remains a recorded gap.
 ### DEP-04 - Application authentication boundaries
 - Primary read source: browser authorized source viewer; plugin/CLI contributes only supported deployment context reads.
 - Evidence needed: redacted description of reviewed authentication/authorization configuration, files/routes covered, and exclusions.

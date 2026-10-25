@@ -48,9 +48,18 @@ Record permission for team-wide inventory and configuration reads separately fro
 
 Before inventory or product checks, read and complete [preflight and collection plan](references/collection-plan.md): authenticate the browser through user handoff, confirm connector/CLI and browser account/team match, and record actual host browser capabilities and read OAuth scopes or equivalent grants. Do not auto-login or change settings. If browser authentication or privacy gates prevent collection, record limited scope and obtain explicit user confirmation to continue API-only, or pause; noninteractive hosts pause for that decision. A confirmed limited-scope review can still produce portable Markdown.
 
+Explicitly agree optional deeper scope per named source/application before collection:
+
+- DEP-04: Application authentication boundaries, for named owner-controlled application/source material.
+- SRC-04: Repository governance evidence, for named owner-controlled repository settings.
+- SEC-04: Secret handling and log redaction design, for named owner-controlled source/configuration material, never secret values or log bodies.
+- OPS-04: Application recovery design, for named owner-provided recovery/configuration documentation.
+
+A request for a "full" review means ask once whether these optional checks are included, not automatic authorisation. Offer accept, decline or partial inclusion with named material and exclusions. When decisions and authorised material are already explicit, record them and do not repeat the same questions; clarify only unresolved scope. Record each optional ID's decision, consent provenance/date, material and exclusions. Unauthorised optional checks are not_reviewed with reason unauthorised, separate from core coverage; declining them is not a core failure. No response leaves optional collection unauthorised, not implicitly accepted.
+
 Record the observed plan and date plus verified current per-feature entitlements, account-specific/custom features and role visibility, following [evidence assessment](references/evidence-assessment.md). Keep unavailable verification explicit; plan labels alone do not establish applicability.
 
-Completion: record the approved scope, identity match or confirmed API-only boundary, plan/entitlement evidence or verification gaps, capability map and per-check collection plan. Classify each check as API-readable, dashboard-only, owner statement or unavailable. Unsupported tools or insufficient permissions are gaps, not reasons to obtain broader access.
+Completion: record the approved scope, all four optional-scope decisions and named-material boundaries (including unauthorised outcomes), identity match or confirmed API-only boundary, plan/entitlement evidence or verification gaps, capability map and per-check collection plan. Classify each check as API-readable, dashboard-only, owner statement or unavailable. Unsupported tools or insufficient permissions are gaps, not reasons to obtain broader access.
 
 ### 2. Inventory and run product checks
 
@@ -108,6 +117,6 @@ Completion: the report includes the mandatory Coverage limits block for every so
 
 ### 6. Human review and handoff
 
-Present the report, unresolved checks and proposed next actions. Offer a walkthrough and a follow-up review after the user has approved and applied changes through a separate process. Posting, emailing, ticket updates or publication require approval of the exact destination and final content.
+Present the report, unresolved checks and proposed next actions, including the report's Owner confirmation questionnaire for each in-scope Owner's own token metadata, MFA policy/recoverability and incident delivery ownership. Label timestamped Owner self-statements separately from directly observed evidence, retain unavailable facts as unresolved and do not broaden access. Hand the questionnaire to the user; do not contact Owners or send automatic DMs, emails or test notifications. Offer a walkthrough and a follow-up review after the user has approved and applied changes through a separate process. Posting, emailing, ticket updates or publication require approval of the exact destination and final content.
 
 Completion: the user can locate the artifacts and distinguish completed review work from proposed remediation. Stop at the handoff; do not automatically fix findings.
