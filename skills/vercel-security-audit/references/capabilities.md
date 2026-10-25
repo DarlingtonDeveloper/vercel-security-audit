@@ -2,10 +2,10 @@
 
 ## Routing
 
-1. Discover the host's installed Vercel plugin and read-only account tools. Verify their actual names, schemas, permissions and selected account. The public Vercel plugin is product context plus tools/skills; installing it does not authenticate an account or make its tools read-only.
-2. Use the authenticated Vercel CLI for supported reads. Inspect current help before executing an unfamiliar command. Missing CLI commands are version/capability gaps, not permission to install or upgrade software silently.
-3. Use an authorised browser for dashboard-only states and evidence confirmation. An isolated/remote browser, including one supplied by the host, is suitable. Use that host's login and takeover controls; agent-browser is an option, not a required tool name.
-4. If neither surface exposes a check, retain not_reviewed or needs_confirmation with the reason. Do not substitute privileged access or another person's session.
+1. Prefer an existing authenticated MCP connector for supported safe account reads. Discover actual capabilities and verify schemas, response contracts, permissions, selected identity and server-side scope before invocation. Read the complete [per-check map](mcp-check-map.md); its capability descriptions are not executable tool names. Installing a plugin does not authenticate an account or make its tools read-only; names copied from reports are not safety evidence.
+2. Use the authenticated Vercel CLI as a fallback, not a requirement. Inspect current help before executing an unfamiliar command. Missing CLI commands are version/capability gaps, not permission to install or upgrade software silently. A safe connector/browser route can proceed without a CLI.
+3. Use an authorised browser for dashboard-only states and evidence confirmation, subject to the same pre-exposure privacy and scope gates. An isolated/remote browser, including one supplied by the host, is suitable. Use that host's login and takeover controls; agent-browser is an option, not a required tool name.
+4. If no safe surface exposes a check, retain not_reviewed or needs_confirmation with the reason. Do not substitute privileged access or another person's session.
 
 Plugin skill names currently include vercel-cli and vercel-firewall. Their guidance covers both reads and writes. Load relevant guidance for discovery, but select only inspection operations for this audit. Examples that stage, publish, edit or enable settings are not audit operations.
 

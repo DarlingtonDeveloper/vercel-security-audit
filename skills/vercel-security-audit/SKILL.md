@@ -7,7 +7,7 @@ description: Community-maintained, unofficial review of an authorised Vercel tea
 
 Community-maintained and unofficial. Do not present this skill or its reports as an official Vercel audit, endorsement or certification.
 
-Run a point-in-time, read-only configuration review of the user's authorised Vercel team. Use the Vercel plugin/CLI for supported reads and an authenticated browser for dashboard-only controls and evidence confirmation. Produce a prioritised, plain-language action plan with steps people can follow.
+Run a point-in-time, read-only configuration review of the user's authorised Vercel team. Prefer an existing authenticated MCP connector for supported safe reads; the CLI is a fallback, not a requirement. Use an authenticated browser for dashboard-only controls and evidence confirmation. Produce a prioritised, plain-language action plan with steps people can follow.
 
 ## Boundaries
 
@@ -40,7 +40,7 @@ If export files or tools are missing, unreadable or unusable, warn with the affe
 
 ### 1. Agree scope and discover capabilities
 
-Read [capabilities](references/capabilities.md). Identify the approved team slug, projects/environments, traffic window, exclusions, report audience and language. Discover available Vercel plugin tools and browser tools through the host. Load the plugin's relevant CLI/firewall guidance when available, then inspect actual tool schemas and installed command help.
+Read [capabilities](references/capabilities.md) and the complete [per-check routing map](references/mcp-check-map.md) before account reads. Identify the approved team slug, projects/environments, traffic window, exclusions, report audience and language. Discover available MCP connector and browser capabilities through the host; verify schemas, response contracts and pre-output privacy selection before invoking candidates. Load relevant plugin guidance when available. Inspect installed CLI help only when using that fallback; absence of a CLI does not block safe connector/browser coverage.
 
 Prefer existing authenticated connections. For a CLI session, confirm identity with `vercel whoami` and discover permitted teams with `vercel teams list`. Ask the user to complete normal login if needed. Confirm the selected team before reading configuration. Prefer explicit team/project flags over changing the user's current directory, project linkage or global team context.
 
@@ -50,7 +50,7 @@ Completion: record the approved scope, account/team confirmation and a capabilit
 
 ### 2. Inventory and run product checks
 
-Read the complete [checklist](references/checklist.md). Use supported plugin read capabilities or CLI inventory and `vercel security check` when available. Inspect current help instead of assuming a minimum CLI version or fixed JSON schema. Read check names and statuses returned by the product; do not invent check slugs.
+Read the complete [checklist](references/checklist.md). Route every core and separately authorised optional ID through the per-check map: authenticated MCP first where verified safe, documented CLI fallback where available, then safe browser evidence or an explicit gap. Use `vercel security check` only as an available fallback after inspecting current help. Read actual product check names/statuses; do not invent slugs or equivalents. Passing is bounded to the returned product check, inspected subsetting and explicit scope, not the whole checklist ID or team.
 
 Account for pagination and finding limits. Product summary counts and the individually inspected findings are different coverage measures. Preserve muted findings and their stated reason in the review, without muting or unmuting anything.
 
