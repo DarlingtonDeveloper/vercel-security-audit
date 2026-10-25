@@ -72,6 +72,8 @@ Confirm that browser observations can select or redact fields before any page te
 
 Read controls only. Navigation links and tabs may be used when their effect is clear; settings buttons, form submissions and toggles are outside this audit. If a runtime cannot distinguish safe navigation, use a direct verified URL or ask the human to navigate.
 
+For control interpretation, read the UI-state playbook in [browser evidence safety](references/browser-evidence.md#ui-state-playbook). Use read-only switch/input semantics, bounded readiness checks and at most one privacy-safe reload only with no form changes. Pending Loading or missing controls remain unknown, not disabled; follow observed views rather than guessed routes.
+
 An incomplete screenshot, truncated snapshot, hidden switch or paginated list cannot establish a passing setting. Record positive-looking but incomplete evidence as needs_confirmation. A zero from a complete, authorised, structured product check can be evidence for that check, not a guarantee about the whole team.
 
 Completion: every finding has the correct source, timestamp, scope and evidence limitations. A browser-only gap stays visible if browser access is unavailable.
