@@ -9,6 +9,10 @@
 
 Plugin skill names currently include vercel-cli and vercel-firewall. Their guidance covers both reads and writes. Load relevant guidance for discovery, but select only inspection operations for this audit. Examples that stage, publish, edit or enable settings are not audit operations.
 
+## Mandatory preflight
+
+Before inventory or configuration collection, complete [collection-plan.md](collection-plan.md). Record host browser capabilities, connector read OAuth scopes or equivalent grants, browser authentication through user handoff, and connector/CLI-to-browser account/team match. Do not assume a working browser from an authenticated API connection. Browser authentication or privacy failures require an explicit limited-scope API-only confirmation or a pause, not silent fallback or permanent exclusion of portable Markdown hosts.
+
 ## Identity and scope
 
 Start with these read-only checks after discovering the executable:
