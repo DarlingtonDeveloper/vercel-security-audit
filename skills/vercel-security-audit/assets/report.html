@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="{{LANG}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; font-src data:; img-src 'none'; connect-src 'none'; script-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+  <title>{{TITLE}}</title>
+  <style>{{STYLE}}</style>
+</head>
+<body>
+  <div class="report-shell">
+    <header class="report-header">
+      <div class="report-masthead">
+        <p class="report-brand">COMMUNITY SECURITY REVIEW</p>
+        <span class="community-pill">Community-maintained · Unofficial</span>
+      </div>
+      <h1>{{TITLE}}</h1>
+      <p class="report-description">An evidence-led configuration review, with recorded limitations and proposed next steps.</p>
+      <p class="report-disclaimer">Independently maintained. Not an official Vercel product or endorsed by Vercel. This review is not a security certification or a guarantee of compliance.</p>
+    </header>
+    <div class="report-layout">
+      <aside class="report-nav" aria-label="Report contents">
+        <p class="nav-label">In this review</p>
+        {{NAV}}
+      </aside>
+      <main id="report-main">{{BODY}}</main>
+    </div>
+    <footer class="report-footer">
+      <p>Community-maintained · Unofficial. Findings apply only to the scope and observation window recorded in this report.</p>
+      <p class="footer-note">Not endorsed by Vercel. Recommendations require separate owner review and authorization; this report does not certify security or compliance.</p>
+      <details class="font-licence">
+        <summary>Font licences</summary>
+        <pre>{{FONT_LICENCE}}</pre>
+      </details>
+    </footer>
+  </div>
+</body>
+</html>

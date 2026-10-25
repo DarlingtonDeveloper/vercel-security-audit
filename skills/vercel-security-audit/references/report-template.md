@@ -1,0 +1,114 @@
+# Security configuration review - [scope alias]
+
+Local draft. Replace bracketed placeholders with verified observations before sharing. This template contains no audit results. Publication or sending requires separate approval of the final content and destination.
+
+## Review summary
+
+Your review identifies confirmed configuration strengths and practical improvements within the scope below. Unknowns are recorded separately so that missing access does not become an unsupported finding.
+
+- Reviewed at: [UTC timestamp or observation window].
+- Authorized scope: [owner-confirmed account/team aliases and included project/environment aliases].
+- Method: read-only public Vercel plugin/CLI supported reads, with browser verification in your own-team dashboard.
+- Overall takeaway: [brief, evidence-grounded statement; no unconditional claim that the account or application is safe].
+- Core coverage: [counts for each status across all 24 required core checks].
+- Optional coverage: [authorized/not authorized; counts for the four optional checks, kept separate].
+- Changes made: none. Recommendations below are proposed actions for your team, not actions performed during this review.
+
+This is a point-in-time configuration review. It is not a penetration test, security certification, compliance assessment, or ongoing monitoring service. A satisfactory setting does not establish application security.
+
+## Initial priorities
+
+List at most three evidence-backed priorities, ordered by owner-relevant impact and confidence. Use fewer when evidence supports fewer. Do not promote unknowns to confirmed vulnerabilities.
+
+1. [Short action or confirmation request; topic ID; benefit; responsible role].
+2. [Optional second priority; delete if unnecessary].
+3. [Optional third priority; delete if unnecessary].
+
+## Confirmed strengths
+
+- [Topic ID]: [confirmed good setting and its limited benefit]. Evidence: [sanitized reference and UTC observation time].
+- [Repeat only for confirmed satisfactory checks; omit unsupported reassurance].
+
+## Scope, missing evidence, and limitations
+
+- Included: [project/environment aliases, sample boundaries, list completeness, observation window].
+- Excluded: [teams/projects/environments outside permission, unreviewed time ranges, application/source review unless separately authorized].
+- Authorization: [owner authority confirmed; optional source/application scope and consent boundary if applicable].
+- Sources used: [verified plugin/CLI capability descriptions and browser views; refer to `capabilities.md`, not guessed commands or UI paths].
+- Missing evidence: [topic ID, unavailable field/view, access or plan limit, and exact question remaining].
+- Conflicting or stale evidence: [topic ID, conflicting observations/times, and what would resolve the difference].
+- Owner statements: [process/ownership claims distinguished from observed configuration].
+- Source/application review: [not authorized, not reviewed, or explicitly authorized materials and coverage].
+- Documentation verification: [verified canonical public sources with dates, or verification pending].
+
+Unavailable fields mean unknown, not disabled. An optional policy being off is not automatically a vulnerability. Plan limitations are not misconfigurations. A metadata change does not prove credential rotation; age does not prove a project is unused. Code or Git organization names do not prove ownership. Platform API authentication does not establish application authentication.
+
+## Recommendations
+
+Repeat the following block for each supported recommendation. Keep the initial priorities list limited to three even if this section has more items. Label confirmation tasks as confirmation, not proven weaknesses. The reviewing agent remains read-only; implementation needs separate owner authorization.
+
+### [Recommendation number] - [outcome-focused title]
+
+- Related checks / status: [topic IDs and recorded statuses].
+- Evidence and rationale: [observed setting, evidence references, requirement, and remaining uncertainty].
+- Benefit: [practical reduction in unwanted exposure or operational uncertainty; avoid unproven exploit claims].
+- Who: [responsible role, without personal details].
+- Before changing: [confirm intended audience, dependencies, plan availability, approvals, current state, and impact window; if any prerequisite is unknown, resolve it first].
+- Where to start: [exact dashboard/repository URL only after verifying it belongs to the authorized scope and contains no credentials or bypass values; otherwise say “Location not yet verified” and give a non-invented capability description].
+
+Numbered action steps: each step contains one action. Replace placeholders with verified instructions; do not guess UI labels or CLI flags. A confirmation-only recommendation stops after the relevant confirmation step.
+1. [Confirm one unresolved prerequisite, if applicable].
+2. [Record the current non-secret configuration for rollback, if a change is proposed].
+3. [Make one separately approved configuration change, if applicable].
+4. [Verify one expected result using an approved read-only view].
+
+- Done when: [observable completion criterion and scope; distinguish configured state from tested application behavior].
+- Impact / rollback: [possible user/build/automation interruption, dependencies, and verified way to restore prior configuration; if unknown, say so and defer changes].
+- Docs: [canonical current public documentation title, verified exact URL, verification date, and claim supported; if not verified, write “Verification pending” and omit the URL].
+
+Verify documentation against current public sources before sharing instructions. Do not invent feature availability, plan entitlements, prices, or guarantees. Omit pricing unless relevant and verified from current official public pricing information. A documentation link supports only the claim it actually addresses.
+
+## Follow-up and completion
+
+- Owner decisions needed: [specific confirmation questions, proposed changes, and responsible roles].
+- Deferred checks: [topic IDs and explicit reason for deferral].
+- Suggested recheck: [owner-chosen trigger or date, without implying automatic monitoring].
+- Completion boundary: [all 24 core statuses recorded, optional scope recorded separately, limitations visible, evidence redacted, and recommendations tied to evidence].
+
+## Appendix: check outcomes
+
+Repeat this compact record for every required core check, grouped under the eight domains in `checklist.md`. Include optional checks separately, even when not reviewed. Keep the topic IDs and give each check its own third-level heading.
+
+### [ID] - [Check title]
+
+Status: [satisfactory / action_recommended / needs_confirmation / not_reviewed / not_applicable]
+
+- Requirement or intent: [owner requirement or intended exposure; record when unconfirmed].
+- Observed evidence: [sanitised setting, UTC time, scope alias, source kind and evidence reference].
+- Rationale: [why the status follows, with coverage and inference limits].
+- Missing evidence / next confirmation: [question and responsible role, or none].
+
+Status meanings: satisfactory meets the scoped requirement; action_recommended has a supported improvement; needs_confirmation has unresolved evidence; not_reviewed was not inspected; not_applicable has verified facts establishing non-applicability. Always provide a rationale. Missing access is not non-applicability.
+
+## Optional normalized evidence example
+
+JSON is optional; readable Markdown evidence is sufficient. This synthetic example is illustrative, not a required schema. Use the same topic IDs, statuses and evidence fields in both formats. Store only sanitised evidence approved for the intended audience.
+
+```json
+{
+  "topic_id": "CRE-01",
+  "scope_alias": "example-team",
+  "observed_at": "2026-10-25T12:00:00Z",
+  "source_kind": "browser",
+  "source_description": "Owner-visible credential metadata",
+  "evidence_ref": "example-evidence-01",
+  "observed": { "expiry_visibility": "not_shown" },
+  "status": "needs_confirmation",
+  "rationale": "An absent expiry field does not establish that expiry is disabled.",
+  "limitation": "Confirm supported expiry visibility with the owner."
+}
+```
+
+## Deliverable format
+
+Markdown is mandatory and remains the source deliverable. Styled HTML uses the bundled community template when Python 3 is available; read [report design](report-design.md) before rendering. PDF is optional, exported from that same HTML through an already-installed browser or renderer. Do not use a renderer that adds official Vercel branding or fetches remote assets. If rendering is unavailable, deliver Markdown without installing tools. Review all rendered pages for redaction and layout. An export is not permission to publish or send.

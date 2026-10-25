@@ -1,0 +1,26 @@
+{
+  "repository": "https://github.com/vercel/geist-font",
+  "commit": "be21666703155b45d8bfb1e7fe5652fe48c842cb",
+  "licence": "SIL Open Font License 1.1",
+  "licence_files": ["OFL.txt", "LICENSE.txt"],
+  "fonts": [
+    {
+      "file": "Geist-Regular.woff2",
+      "source_path": "fonts/Geist/webfonts/Geist-Regular.woff2",
+      "bytes": 45228,
+      "sha256": "12e7c80de776bc74044973a26bb96842ca4bfe9e16fc6128fa5c6420e8e1d8fc"
+    },
+    {
+      "file": "Geist-SemiBold.woff2",
+      "source_path": "fonts/Geist/webfonts/Geist-SemiBold.woff2",
+      "bytes": 46304,
+      "sha256": "162dcce19c895344a8eeee8482017d975f8e555d90da21d4343e31e8c9334d79"
+    },
+    {
+      "file": "GeistMono-Regular.woff2",
+      "source_path": "fonts/GeistMono/webfonts/GeistMono-Regular.woff2",
+      "bytes": 50764,
+      "sha256": "67b27e8a75395c074cc23656acf208ccd69e674da4cad2c7d6dfa254272ad7e8"
+    }
+  ]
+}
