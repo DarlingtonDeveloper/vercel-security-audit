@@ -89,7 +89,9 @@ Screenshots are optional evidence, not a reason to capture full pages of member 
 
 ## Operation boundary
 
-Allowed operations are identity confirmation, scoped list/inspect/status/check reads, bounded traffic/event queries and browser navigation to already-authorised pages. Review the schema and response sensitivity even for a tool labelled read-only.
+Read the complete [MCP metadata boundary](mcp-boundary.md) before connector account reads. Its explicit denylist and conditional metadata allowlist govern every candidate in the routing map. Unknown tools are denied by default pending verified input schemas and metadata-only response contracts; read-only annotations and arbitrary GETs do not establish safety. No named tool is unconditionally allowed.
+
+Identity confirmation, scoped list/inspect/status/check metadata, bounded traffic/event aggregates and safe browser navigation are candidate operations only when their authorisation and pre-exposure gates are met. Secret-returning reads and sharing-access creation/reuse are denied even if labelled read-only. Never fetch actual account/environment values to test a collector. Current sharing/automation-bypass counts require a proven non-mutating current-metadata read; otherwise use owner dashboard metadata behind the pre-exposure gate or record a gap. Event history is never a current active count, even as an estimate, and cannot drive a current-inventory finding.
 
 Excluded operations include deploying, staging/publishing/discarding firewall drafts, changing rules or Attack Mode, pausing mitigations, creating/revoking tokens, buying products, editing roles, pulling environment values, changing DNS and sending/posting reports. Avoid generic API calls: this skill does not need an arbitrary REST escape hatch. GET responses can reveal secrets, so the HTTP method alone is not a safety check.
 
