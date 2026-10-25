@@ -109,6 +109,24 @@ Verify documentation against current public sources before sharing instructions.
 - Suggested recheck: [owner-chosen trigger or date, without implying automatic monitoring].
 - Completion boundary: [all 24 core statuses recorded, optional scope recorded separately, limitations visible, evidence redacted, and recommendations tied to evidence].
 
+### Owner confirmation questionnaire
+
+Include this questionnaire in the report handed to the user, for each Owner within the agreed scope; do not collect other Owners' personal metadata through one person's account. Reuse already supplied confirmations without re-asking resolved questions. No automatic DMs, emails, bot requests or other outreach: any communication requires separate approval of the exact final content and destination. Do not send test messages or notification events during the review.
+
+Keep replies as Owner self-statements, separate from directly observed configuration. For each question record the related check, scope alias, responding role alias, answer or unavailable, UTC statement time, UTC metadata observation time if known, and any separately observed evidence reference. Missing dates remain unknown, not inferred from the report date. Do not collect personal identifiers to prove authorship. State precisely which facts are still unresolved; an attempted review with unavailable or conflicting facts remains needs_confirmation (or not_reviewed if never collected). An Owner statement is not a substitute for missing direct visibility. Apply [evidence assessment](evidence-assessment.md) to conflicts and not_applicable claims; do not broaden access or request elevated credentials to complete the questionnaire.
+
+```text
+Owner confirmation questions for [approved scope alias]
+
+1. CRE-01: Using only your own current metadata in the agreed scope, what is your scoped token count, and what scope and expiry metadata is visible? Give redacted aggregate counts and expiry coverage only, or say unavailable. If expiry is not_applicable, state the verified reason (for example, a verified zero-token inventory); missing visibility is not non-applicability. Do not supply token values, token strings, sensitive token names or screenshots revealing credentials. Metadata dates alone do not prove rotation or actual use.
+
+2. IAM-02: Does your own MFA posture meet the agreed policy [record the agreed requirement, or mark it unresolved], and is recoverability arranged within that policy? Confirm policy compliance, recoverability and any unresolved exception at a non-secret level only. Do not provide passwords, recovery codes, authentication method secrets, device identifiers or setup details. Your statement does not establish team-wide enrolment or enforcement.
+
+3. OPS-01: Can you confirm incident delivery ownership and escalation responsibility for this scope? Identify responsible roles and non-sensitive subscription/delivery arrangements, not endpoints, webhook URLs, email addresses or other recipient identifiers. Distinguish configured subscription metadata from an Owner statement about delivery readiness. If actual delivery has not been verified through a separately approved procedure, say that it remains unverified; this questionnaire does not authorise a delivery test.
+
+For every answer, give the scope alias, role alias, UTC statement time and current metadata observation time if known. Say unavailable for facts you cannot confirm. Do not obtain broader access or inspect another Owner's credentials to answer.
+```
+
 ## Appendix: check outcomes
 
 Repeat this compact record for every required core check, grouped under the eight domains in `checklist.md`. Include optional checks separately, even when not reviewed. Keep the topic IDs and give each check its own third-level heading.

@@ -117,6 +117,6 @@ Completion: the report includes the mandatory Coverage limits block for every so
 
 ### 6. Human review and handoff
 
-Present the report, unresolved checks and proposed next actions. Offer a walkthrough and a follow-up review after the user has approved and applied changes through a separate process. Posting, emailing, ticket updates or publication require approval of the exact destination and final content.
+Present the report, unresolved checks and proposed next actions, including the report's Owner confirmation questionnaire for each in-scope Owner's own token metadata, MFA policy/recoverability and incident delivery ownership. Label timestamped Owner self-statements separately from directly observed evidence, retain unavailable facts as unresolved and do not broaden access. Hand the questionnaire to the user; do not contact Owners or send automatic DMs, emails or test notifications. Offer a walkthrough and a follow-up review after the user has approved and applied changes through a separate process. Posting, emailing, ticket updates or publication require approval of the exact destination and final content.
 
 Completion: the user can locate the artifacts and distinguish completed review work from proposed remediation. Stop at the handoff; do not automatically fix findings.
