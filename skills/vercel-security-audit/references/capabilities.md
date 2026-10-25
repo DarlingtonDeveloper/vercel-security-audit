@@ -71,6 +71,14 @@ Important distinctions:
 - Activity payloads, webhook destination URLs and integration configurations can contain sensitive material. Keep only necessary event types, aggregate counts and verified configuration flags. A missing event is not proof an action never happened.
 - Runtime version settings and recent deploy dates do not establish deployed dependency versions, application authentication or whether a site is still used.
 
+## Pagination and bounded collection
+
+For every source/feed, including activity, deployments and observability, inspect the actual read-tool schemas, returned pagination metadata and installed help before collection. Discover supported windows, retention, page/finding caps, cursor fields and end-of-list semantics for that specific feed. Do not invent pagination flags or reuse one command's cursor mechanism for another. Follow only verified pagination within authorised scope, retaining pre-exposure redaction. Do not expand collection or bypass access/retention limits to obtain completeness.
+
+Record each source/feed in the report's [Coverage limits](report-template.md#coverage-limits) block: window, product-reported total if available, received count, individually inspected count, page/finding cap, truncation, cursor availability, whether the end is known, missing sources, timeouts/failures and retries with outcomes. Count unique records where deduplication is possible and disclose overlap or uncertainty. Summary totals, received records and inspected records are different measures. Receiving 100 records is not proof of completeness, even if the request succeeded. Confirm the end from documented response semantics rather than a round number or a missing cursor field alone.
+
+If there is no usable cursor without verified end-of-list evidence, or a partial bounded result after failure, record a coverage gap, never a negative finding about the unobserved scope (for example, no changes, incidents or deployments). Keep completeness-dependent conclusions needs_confirmation; a source never collected remains not_reviewed. Preserve useful bounded observations with their exact scope. Record each attempted retry and its outcome, or that no retry was attempted and why; do not retry indefinitely. A successful narrower retry does not fill the original window silently. Missing fields are unknown, not zero or none; raw cursor values and sensitive failure payloads need not be saved.
+
 ## Browser navigation map
 
 Construct URLs only from team/project slugs already verified by inventory. Prefer observed navigation if the UI moves. The team base is https://vercel.com/{team_slug}.

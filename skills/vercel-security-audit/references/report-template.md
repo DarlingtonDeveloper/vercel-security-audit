@@ -46,6 +46,28 @@ List at most three evidence-backed priorities, ordered by owner-relevant impact 
 
 Unavailable fields mean unknown, not disabled. An optional policy being off is not automatically a vulnerability. Plan limitations are not misconfigurations. A metadata change does not prove credential rotation; age does not prove a project is unused. Code or Git organization names do not prove ownership. Platform API authentication does not establish application authentication.
 
+## Coverage limits
+
+This block is mandatory even when there are no known limits. Repeat the record below for every source/feed used or planned, including unavailable sources. Write unknown for unavailable facts, not zero; if no collection occurred, say so. If no known limits remain, explicitly state that conclusion and its verified basis rather than omitting this block. Follow [pagination and bounded collection](capabilities.md#pagination-and-bounded-collection).
+
+### [Source/feed alias]
+
+- Source/feed: [verified tool/view description, scoped aliases, observation date and associated check IDs].
+- Window: [requested and actually covered start/end UTC; retention boundary or unknown].
+- Reported total: [product-reported count and what it measures, or unknown].
+- Received: [unique records received; deduplication/overlap limits or unknown].
+- Inspected: [records individually inspected, separate from aggregate totals; sample boundaries].
+- Page/finding cap: [verified per-page and overall caps, or unknown].
+- Truncation: [yes/no/unknown, observed indication and affected scope].
+- Cursor availability: [available/unavailable/unknown; supported continuation semantics, without raw cursor values].
+- End known: [yes/no/unknown; verified end-of-list evidence, not an assumption from a count or absent cursor].
+- Missing sources: [unavailable or uncollected feeds/windows and reason, or none verified].
+- Timeouts/failures: [sanitized failure type, affected window and retained partial coverage; none if verified].
+- Retries and outcomes: [attempt time, approved window, outcome and remaining gaps for each retry; or not attempted and why].
+- Assessment effect: [bounded conclusions, needs_confirmation/not_reviewed checks and precise unresolved coverage; no absence claim from partial results].
+
+A count of 100 is not completeness. No cursor without a verified end, truncation, or a bounded retry after a failed wider query remains a coverage gap, not proof that events or resources do not exist.
+
 ## Recommendations
 
 Repeat the following block for each supported recommendation. Keep the initial priorities list limited to three even if this section has more items. Label confirmation tasks as confirmation, not proven weaknesses. The reviewing agent remains read-only; implementation needs separate owner authorization.
