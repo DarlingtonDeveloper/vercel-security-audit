@@ -100,9 +100,9 @@ class ReportModelTests(unittest.TestCase):
         self.assertTrue(markdown.startswith("# Synthetic configuration review\n"))
         self.assertEqual(markdown.count("\nStatus: "), 28)
         for identifier in CORE_IDS + OPTIONAL_IDS:
-            self.assertEqual(markdown.count("### " + identifier + " - "), 1)
+            self.assertEqual(len(re.findall(r"^### " + identifier + " - ", markdown, re.M)), 1)
         for text in ("Revision: 2", "Core coverage (24)", "Optional coverage (4)",
-                     "Source/application review:", "Optional review authorized: no",
+                     "Source/application review:", "Optional scope decisions", "Decision: not_requested",
                      "Status: needs_confirmation", "ev-001", "2026-10-25T12:00:00Z",
                      "browser", "Synthetic owner-visible metadata", "example-project",
                      "Expiry is not shown.", "An absent field does not establish disabled expiry.",
@@ -125,7 +125,7 @@ class ReportModelTests(unittest.TestCase):
         self.assertEqual([c["id"] for c in value["checks"]], list(CORE_IDS + OPTIONAL_IDS))
         self.assertTrue(all(c["status"] == "not_reviewed" and c["rationale"]
                             and c["evidence_log"] == [] for c in value["checks"]))
-        self.assertFalse(value["scope"]["optional_authorized"])
+        self.assertTrue(all(item["decision"] == "not_requested" for item in value["scope"]["optional_consent"]))
         self.assertEqual(MODEL.build_summary(value), {
             "core": {"satisfactory": 0, "action_recommended": 0,
                      "needs_confirmation": 0, "not_reviewed": 24, "not_applicable": 0},
@@ -250,8 +250,13 @@ class ValidationTests(unittest.TestCase):
         change = patch_value(check_id="DEP-04")
         with self.assertRaises(MODEL.ModelError):
             MODEL.append_evidence(value, change)
-        value["scope"]["optional_authorized"] = True
+        value["scope"]["optional_consent"][0].update(
+            decision="accepted", materials=[{"alias": "example-source", "scope_alias": "example-project",
+                                             "read_boundaries": ["auth-config"]}],
+            owner_alias="owner-role-1", provenance="Owner supplied scoped permission.",
+            statement_at="2026-10-25T11:00:00Z", approved_at="2026-10-25T11:00:00Z")
         value["scope"]["source_application_review"] = "Owner-authorized synthetic configuration material only."
+        change["checks"][0]["evidence_log"][0].update(material_alias="example-source", read_boundary="auth-config")
         updated = MODEL.append_evidence(value, change)
         self.assertEqual(MODEL.build_summary(updated)["optional"], {
             "satisfactory": 0, "action_recommended": 0, "needs_confirmation": 1,
