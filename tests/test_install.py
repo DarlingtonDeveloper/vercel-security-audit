@@ -62,7 +62,7 @@ class InstallIntegrityTests(unittest.TestCase):
         })
         for reference in references:
             self.assertTrue((SKILL_DIR / reference).is_file(), reference)
-        for instruction in ("Read all four essential references in full", "missing or unreadable",
+        for instruction in ("confirm that all four essential references are present and readable", "missing or unreadable",
                             "stop before account reads", "Installation integrity error",
                             "complete skill directory", "host's actual skill location",
                             "not the current project or working directory"):
