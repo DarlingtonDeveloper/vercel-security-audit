@@ -10,7 +10,10 @@ Several safeguards meet the example team's requirements. The first improvements 
 - Example window: 25 October 2026, 12:00 to 12:30 UTC. This is not an actual collection timestamp.
 - Method: synthetic fixtures only. No account or application was accessed.
 - Changes made: none. The recommendations are proposed actions, not completed work.
-- Coverage: 24 core checks, with four optional checks recorded separately.
+- Core checks (24): 12 satisfactory, 2 action recommended, 6 need confirmation, 3 not reviewed, 1 not applicable.
+- Optional checks (4, kept separate): 4 not reviewed.
+
+This is a point-in-time configuration review, not a penetration test, security certification, compliance assessment or ongoing monitoring. A satisfactory setting does not establish application security.
 
 ## Initial priorities
 
@@ -31,6 +34,32 @@ These are confirmed within the fictional evidence only, not observations about a
 All E01 to E24 references are invented, sanitized fixture records for the example window and scope above. They model configuration summaries and separately labelled owner statements; they are not screenshots, tool output, or customer evidence. An omitted field means unknown, not disabled. Optional controls being off are not automatically vulnerabilities.
 
 Source code, provider-side repository settings, log contents, credential values, application requests, and recovery exercises are excluded. No actual owner authorization is asserted. No external messages were sent. Public documentation URLs below are known reference locations, not live-verified sources; current instructions and feature availability must be checked before real implementation.
+
+- Plan and entitlements: no plan label is modelled in the fixtures; feature availability and role requirements are verification pending.
+- Applicability: FWB-03 is not applicable because the complete fixture inventory contains no custom rules or exceptions, not because access was missing.
+- Owner statements: labelled as such in each appendix record and never treated as observed configuration.
+
+### Optional scope decisions
+
+No optional source or application review was requested in this fictional scenario, so no optional evidence was collected and none of these affects the core outcomes.
+
+- DEP-04 - Application authentication boundaries: not requested; no material named; not reviewed.
+- SRC-04 - Repository governance evidence: not requested; no material named; not reviewed.
+- SEC-04 - Secret handling and log redaction design: not requested; no material named; not reviewed.
+- OPS-04 - Application recovery design: not requested; no material named; not reviewed.
+
+## Coverage limits
+
+### Synthetic fixture set
+
+- Source/feed: fictional fixtures E01 to E24 for `example-team`, used for all 24 core checks; no product feed was read.
+- Window: the example window above; no retention boundary applies to fixtures.
+- Reported total: not applicable to fixtures; no product-reported counts exist.
+- Received: 24 fixture records. Inspected: all 24, individually.
+- Page/finding cap: none; fixtures are not paginated. Truncation: no. Cursor availability: not applicable. End known: yes, the fixture set is fixed.
+- Missing sources: contributor, logging and activity collection are excluded (SRC-03, SEC-03, OPS-02).
+- Timeouts/failures: none. Retries and outcomes: not attempted; nothing failed.
+- Assessment effect: the three excluded areas stay not reviewed; nothing is inferred about them.
 
 ## Recommendations
 
@@ -225,5 +254,13 @@ Source: Synthetic optional-scope fixture O04; excluded from core coverage.
 ## Follow-up
 
 Resolve OPS-01 ownership first as a confirmation task. Obtain separate approval before either proposed configuration change. Confirm missing evidence for the other unresolved checks and agree any expanded review scope. Recheck after approved changes at an Owner-chosen time; this report does not establish ongoing monitoring.
+
+### Owner confirmation questionnaire
+
+Hand these three question groups, worded as in the skill's report template, to each in-scope Owner. Nothing was sent; answers would be recorded as Owner statements, separate from observed configuration.
+
+- CRE-01 - Owner token metadata: not answered; statement time and metadata observation time unknown.
+- IAM-02 - Owner MFA policy and recovery: not answered; statement time unknown.
+- OPS-01 - Owner incident delivery responsibility: not answered; statement time unknown.
 
 Community-maintained, unofficial example. Not an official Vercel audit, endorsement, or certification. Local renderer preview only; nothing has been published or sent.

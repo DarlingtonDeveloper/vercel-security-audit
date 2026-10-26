@@ -6,6 +6,8 @@ Use the bundled, independently styled report. It uses Geist and Geist Mono typog
 
 ## Reading order
 
+The [required components](report-template.md#required-components) define what every report must contain and which rules are fixed. This is the default reading order for them, not a fixed layout:
+
 1. A short title, review window and verified scope.
 2. A balanced summary, confirmed strengths and at most three initial priorities.
 3. Guided recommendations with responsible roles, prerequisites, numbered steps and completion checks.

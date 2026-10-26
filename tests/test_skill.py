@@ -126,8 +126,8 @@ class PublicSkillTests(unittest.TestCase):
     def test_behaviour_scenarios_are_explicitly_unexecuted(self):
         text = (ROOT / "evals" / "scenarios.md").read_text()
         self.assertIn("not executed model or host tests", text)
-        self.assertEqual(len(re.findall(r"^## \d+\.", text, re.M)), 12)
-        self.assertEqual(text.count("Pass:"), 12)
+        self.assertEqual(len(re.findall(r"^## \d+\.", text, re.M)), 13)
+        self.assertEqual(text.count("Pass:"), 13)
 
     def test_no_tables_or_unbalanced_fences(self):
         for file in ROOT.rglob("*.md"):
