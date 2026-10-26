@@ -59,9 +59,26 @@ Label every answer as an owner statement with UTC time, role category, scope ali
 
 ## Accidental exposure: stop and hand off
 
+This applies to any unexpected exposure, whether it came from the browser, CLI output or a connector response. First classify what was exposed from the action and field type, without re-reading the content:
+
+- Severe: secret values, credentials, tokens, access-bearing or bypass URLs, environment variable values, personal data such as member names, emails or rows, or anything you cannot classify without looking again. Use the full procedure below.
+- Low severity: only non-secret, non-personal account metadata outside the agreed allow-list, such as project names or IDs, environment variable names without values, domain names or team names. Use the [low-severity path](#low-severity-exposure) instead.
+
+If in doubt, treat the exposure as severe.
+
+### Severe exposure
+
 If unexpected sensitive content is captured, stop all further collection immediately. Do not re-read values, zoom, OCR, quote, copy or inspect the exposed content again to decide how bad it is. Do not treat redact-after-saving as a repair or continue on another page.
 
 Follow the host/organisation incident process and notify the user using metadata only: UTC time, tool/action category, scope alias, affected artifact category and containment status. Never include the exposed value, row, raw URL or screenshot in the notice or incident record. If no process is available, pause for user-directed incident handling. Identify possible model/transcript/log/disk exposure without opening affected artifacts. Restrict further access through approved host controls where authorised; credential rotation, artifact deletion and external notification require the appropriate separate approval. This audit does not perform incident investigation or remediation. Resume only after authorised incident handling and renewed scope/privacy confirmation.
+
+### Low-severity exposure
+
+1. Stop the action that caused the exposure and do not repeat it. Do not re-read, quote, summarise or reuse the exposed content, and keep it out of evidence, the report and any other artifact.
+2. Tell the user, using metadata only: UTC time, action category, scope alias, the kind of field exposed (for example "project names") and whether any artifact was written. Never repeat the exposed values in the notice.
+3. If an artifact already contains the content, say which artifact category it is and ask the user how to handle it. Deleting or editing their files needs their approval.
+4. Find the cause and fix it before continuing, for example by switching that read to an allow-listed field selection before exposure. Record a sanitised entry in the report's limitations: time, action category, field kind and the fix.
+5. Resume only after the user explicitly confirms that collection can continue with the fix in place. Silence is not confirmation. If the same kind of exposure happens again, stop collection and treat it as severe.
 
 ## UI-state playbook
 

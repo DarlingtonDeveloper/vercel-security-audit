@@ -77,7 +77,7 @@ Completion: inventory coverage is recorded, and every required checklist ID has 
 
 Use CLI/plugin reads for configuration and traffic where supported. Use browser navigation for controls not exposed by those reads, conflicting evidence, notification subscriptions, permission-dependent identity settings and confirmation of the actual dashboard state. Follow the observed UI rather than guessing control names or URLs.
 
-Before browser navigation or capture, read [browser evidence safety](references/browser-evidence.md). Its pre-model gate covers automatic full-viewport screenshots, sensitive destination classification, safe per-check owner questions and the accidental-exposure stop procedure. A human navigating does not authorise automatic exposure; owner summaries remain labelled statements and missing observed data remains unknown.
+Before browser navigation or capture, read [browser evidence safety](references/browser-evidence.md). Its pre-model gate covers automatic full-viewport screenshots, sensitive destination classification, safe per-check owner questions and the accidental-exposure procedure, which has a full stop for secrets or personal data and a lighter path for low-severity metadata. It applies to CLI and connector output as well as the browser. A human navigating does not authorise automatic exposure; owner summaries remain labelled statements and missing observed data remains unknown.
 
 Before each browser navigation, confirm the intended account/team and planned destination. After navigation, confirm the destination and context again. Pause for login or human takeover. Use the browser's own observation and ownership rules; do not manipulate another active browser session.
 
