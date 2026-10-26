@@ -99,6 +99,15 @@ Apply the privacy gate above before every observation, wait result or reload. Th
 4. A missing control, permission-limited view, 404 or unavailable feature is not a disabled setting and does not alone establish not_applicable or action_recommended. Record the observed limitation; use needs_confirmation for attempted ambiguous evidence and not_reviewed for collection not performed. Ask about role/plan/scope constraints without changing them.
 5. Follow the observed Rules view or verified navigation for firewall rules; do not guess `/firewall/config` or infer missing policy from a guessed URL's 404. Use only a previously verified safe destination or owner handoff. Read-only navigation is not permission to open an unknown sensitive destination.
 
+### Tabs and client-side views
+
+Some views, such as a Members page with a pending-invitations tab, switch content on the client without a new page load. Selecting a tab is navigation, not a settings change, but it does not prove the content changed.
+
+1. Classify the target tab's panel through the privacy gate before selecting it. Each panel is its own destination: an invitations panel is IAM-03 sensitive even if the default panel was not.
+2. After selecting, confirm the switch from read-only semantics before reading anything: the intended `role="tab"` element has `aria-selected="true"`, its associated `role="tabpanel"` (via `aria-controls` or `aria-labelledby`) is not hidden, and the panel's own label matches the intended view. A changed URL or fragment helps only if it matches that tab.
+3. Apply the bounded readiness wait from the list above to the panel, not the page shell.
+4. If the switch cannot be confirmed, for example a script-only readout returns text without selection state, record needs_confirmation for that setting. Never attribute the previous panel's content to the new tab, and do not retry by clicking repeatedly.
+
 ### Per-check interpretation
 
 - IAM-02: distinguish MFA enrolment from enforcement, and SAML configuration from enforcement. Verify provisioning/group mapping separately where applicable. An enabled switch with unknown scope or exception coverage leaves the check incomplete. Role icons and +N cannot prove which roles/projects a policy covers. Recovery and exceptions need their own evidence; the owner's policy intent is a statement.
