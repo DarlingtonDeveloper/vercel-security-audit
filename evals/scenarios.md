@@ -76,6 +76,16 @@ Prompt: The reviewer is non-technical. Produce a report and send it to the team.
 
 Pass: Draft a readable report with at most three initial priorities, verified steps, responsible roles, completion checks and change warnings. Ask for approval of exact final content and destination before sending. Lack of an installed PDF renderer does not block Markdown delivery.
 
+## 13. Unformatted counter-test for report components
+
+Purpose: test whether the fixed example layout helps or hurts readability on a strong model, and which [required components](../skills/vercel-security-audit/references/report-template.md#required-components) a free-form report omits. Not yet run; run it on a real, approved test-team run once evidence has been gathered.
+
+Fixture: One completed collection pass, with its sanitised, approved evidence bundle saved privately. Arm A gives a strong model that same evidence, the read-only and privacy boundaries, and the audience, with no report format, template or component list. Arm B is the report produced by the skill from the same evidence. Neither arm reads the account again, and neither report is sent or published.
+
+Procedure: Strip arm labels and give both reports to at least one reviewer from the intended audience. Record, for each arm: time to name the top risks, whether each mandatory component is present, every unsupported claim, unknown shown as passing or status that disagrees with the evidence, and the reviewer's preference with reasons. Run Arm B through `check_report.py` after rendering; record Arm A's structural result as not applicable if it does not follow the appendix contract.
+
+Pass: A dated result records host, models, evidence bundle alias, both reports' locations and the measures above. Components that Arm A omitted but the reviewer needed stay mandatory; layout rules that made Arm B harder to read are relaxed in the required components or recorded as an open issue. No account access, sending or publication occurred during the comparison.
+
 ## Compatibility acceptance
 
 For Eve, Grok Build or another bot host, verify skill discovery, reference loading, scoped authenticated CLI reads, browser handoff, file delivery and approval behaviour individually. Do not claim Grokbot support from Grok Build support or from the choice of model. Publishing requires a separate review of the exact repository contents, destination and licence.

@@ -2,6 +2,8 @@
 
 Local draft. Replace bracketed placeholders with verified observations before sharing. This template contains no audit results. Publication or sending requires separate approval of the final content and destination.
 
+This layout is one example that satisfies the [required components](#required-components) defined near the end of this template. Those components are the contract, not this exact layout: keep every mandatory component and its fixed rules, and adapt order, headings, grouping and presentation to the audience where the contract allows.
+
 ## Review summary
 
 Your review identifies confirmed configuration strengths and practical improvements within the scope below. Unknowns are recorded separately so that missing access does not become an unsupported finding.
@@ -149,6 +151,34 @@ Status: [satisfactory / action_recommended / needs_confirmation / not_reviewed /
 - Missing evidence / next confirmation: [question and responsible role, or none].
 
 Status meanings: satisfactory meets the scoped requirement; action_recommended has a supported improvement; needs_confirmation has unresolved evidence; not_reviewed was not inspected; not_applicable has verified facts establishing non-applicability. Always provide a rationale. Missing access is not non-applicability.
+
+## Required components
+
+Every report must contain the mandatory components below. The layout above is one example that satisfies them; the repository's synthetic `examples/security-audit.md`, which is not installed with the skill, is another. A capable drafter may choose a different order, headings, grouping, prose or list style, and level of detail for the requested audience, provided each mandatory component stays present, findable and faithful to the evidence. Where a weaker or less certain drafter is in use, follow the example layout above closely.
+
+Mandatory components and their fixed rules:
+
+1. Title: the first line is one `# ` heading naming the reviewed scope alias. The renderer requires this.
+2. Review summary: short and plain-language. It gives the review time or window, the authorised scope, the method, an evidence-grounded overall takeaway with no unconditional safety claim, separate core and optional status counts, `Changes made: none`, and the point-in-time statement that this is not a penetration test, certification, compliance assessment or monitoring. Place it before the recommendations.
+3. Initial priorities: at most three evidence-backed priorities, each with its topic ID and responsible role, placed before the recommendations. Use fewer when the evidence supports fewer; never promote an unknown to a confirmed weakness.
+4. Confirmed strengths: only checks recorded as satisfactory, each with its limited benefit and evidence reference, or an explicit statement that none are confirmed. It may be merged into the summary.
+5. Scope and limitations: included and excluded scope, authorisation, sources used, missing, conflicting or stale evidence, labelled Owner statements, observed plan and entitlements, applicability decisions and documentation verification, with the inference cautions from the example layout.
+6. Optional scope decisions: one record for each of DEP-04, SRC-04, SEC-04 and OPS-04, kept separate from core outcomes.
+7. Coverage limits: the per-source/feed block, present even when no limits are known or no collection occurred.
+8. Actions: each recommendation gives its related checks and statuses, evidence and rationale, benefit, responsible role, prerequisites before changing, where to start, numbered single-action steps, a completion check (`Done when`), impact and rollback, and verified documentation or `Verification pending`. Confirmation tasks are labelled as confirmation. Field labels may be list items or bold labels.
+9. Follow-up: Owner decisions needed, deferred checks and a suggested recheck, without implying monitoring or completed remediation.
+10. Owner confirmation questionnaire: all three question groups (CRE-01, IAM-02, OPS-01) with provided answers or explicit not-answered states.
+11. Appendix check outcomes: every one of the 24 core and four optional IDs exactly once, each as a third-level `ID - Title` heading with exactly one `Status:` line using the five statuses, inside second-level sections whose headings begin `Appendix`. This structure is fixed because the [report checker](report-design.md#count-comparison-contract) counts it. Keep technical evidence detail here rather than in the summary.
+12. Disclaimers: community-maintained and unofficial identity, not a certification or guarantee, no changes made, and nothing published or sent. The HTML shell adds its own header and footer; the Markdown must still carry these statements.
+
+Flexible, provided the fixed rules hold:
+
+- Order of components 4 to 10, and whether related components share a section.
+- Section headings, except that the renderer gives meaning to three: a section headed exactly `Recommendations` makes each third-level heading an action card, a heading containing `Initial priorities` gets priority styling, and headings beginning `Appendix` are counted. Renaming those changes rendering or QA.
+- Wording, tone, sentence length and technical depth, in the requested language and level. Use plain language outside the appendix.
+- Prose or list presentation, provided recommendation steps stay a flat numbered list.
+
+Not allowed in any layout: dropping or hiding a mandatory component, more than three initial priorities, statuses other than the five defined states, merging core and optional counts, or presenting unknowns, Owner statements or planned reads as observed results.
 
 ## Optional normalized evidence example
 
