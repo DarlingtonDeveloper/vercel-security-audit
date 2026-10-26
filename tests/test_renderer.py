@@ -570,9 +570,10 @@ class RendererCLITests(RendererCase):
     def assert_cli_failure(self, result, secret="SYNTHETIC_SOURCE_CANARY"):
         self.assertEqual(result.returncode, 1)
         self.assertEqual(result.stdout, "")
-        self.assertEqual(result.stderr,
-                         "Could not render report. Check the sanitised Markdown, bundled assets "
-                         "and new output path. Existing files were preserved.\n")
+        # Specific, value-free diagnostics on one line (#29).
+        self.assertTrue(result.stderr.startswith("Could not render report"), result.stderr)
+        self.assertTrue(result.stderr.endswith("Existing files were preserved.\n"), result.stderr)
+        self.assertEqual(result.stderr.count("\n"), 1)
         self.assertNotIn(secret, result.stdout + result.stderr)
         self.assertNotIn(str(self.source), result.stderr)
         self.assertNotIn("Traceback", result.stderr)

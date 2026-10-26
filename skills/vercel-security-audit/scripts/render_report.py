@@ -28,6 +28,23 @@ STATUSES = {
     "not_reviewed": ("Not reviewed", "unreviewed"),
     "not_applicable": ("Not applicable", "na"),
 }
+GENERIC_FAILURE = ("Could not render report. Check the sanitised Markdown, bundled assets "
+                   "and new output path. Existing files were preserved.")
+
+
+class ReportError(ValueError):
+    """Authored, value-free diagnostics: literal messages only, safe to print.
+
+    Never format source text, keys, paths or evidence into these messages.
+    """
+
+
+def describe_os_error(role, error):
+    """Name the failing path role and OS reason without echoing the path."""
+    reason = error.strerror if isinstance(error.strerror, str) and error.strerror else "I/O error"
+    return f"The {role} could not be used ({reason})."
+
+
 INLINE = re.compile(r"`[^`\n]+`|!\[[^\]\n]*\]\([^\)\n]*\)|\[[^\]\n]+\]\([^\)\n]+\)|\*\*[^*\n]+\*\*|\*[^*\n]+\*")
 
 
@@ -85,10 +102,10 @@ def markdown_body(source):
     """Small documented Markdown subset, escaped by construction; no raw HTML."""
     lines = source.splitlines()
     if not lines or not lines[0].startswith("# ") or not lines[0][2:].strip():
-        raise ValueError("The Markdown report must start with one report title (# Title).")
+        raise ReportError("The Markdown report must start with one report title (# Title).")
     title = lines[0][2:].strip()
     if len(title) > 240:
-        raise ValueError("The report title is too long.")
+        raise ReportError("The report title is too long.")
     output, navigation, identifiers = [], [], {}
     used_identifiers = {"report-main"}
     section_open, article_open, recommendations = False, False, False
@@ -190,7 +207,7 @@ def markdown_body(source):
         else:
             paragraph.append(line)
     if fence:
-        raise ValueError("Close all fenced code blocks before rendering.")
+        raise ReportError("Close all fenced code blocks before rendering.")
     flush_paragraph()
     close_list()
     close_article()
@@ -201,15 +218,15 @@ def markdown_body(source):
 
 def render_report(source, language="en"):
     if not isinstance(language, str) or not re.fullmatch(r"[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*", language):
-        raise ValueError("Use a valid report language tag.")
+        raise ReportError("Use a valid report language tag.")
     if not isinstance(source, str) or len(source.encode("utf-8")) > MAX_BYTES or "\x00" in source:
-        raise ValueError("Report input is invalid or exceeds 2 MB.")
+        raise ReportError("Report input is invalid or exceeds 2 MB.")
     title, body, navigation = markdown_body(source)
     fonts = []
     for family, weight, filename in FONT_FILES:
         data = (ASSETS / "fonts" / filename).read_bytes()
         if data[:4] != b"wOF2":
-            raise ValueError("Bundled font data is invalid.")
+            raise ReportError("Bundled font data is invalid.")
         encoded = base64.b64encode(data).decode("ascii")
         fonts.append("@font-face{font-family:'" + family + "';font-style:normal;font-weight:" + weight + ";font-display:swap;src:url(data:font/woff2;base64," + encoded + ") format('woff2');}")
     template = (ASSETS / "report.html").read_text(encoding="utf-8")
@@ -217,7 +234,7 @@ def render_report(source, language="en"):
     licence = "\n\n".join((ASSETS / "fonts" / name).read_text(encoding="utf-8") for name in ("OFL.txt", "LICENSE.txt"))
     values = {"LANG": language, "TITLE": html.escape(title), "STYLE": style, "NAV": navigation, "BODY": body, "FONT_LICENCE": html.escape(licence)}
     if set(re.findall(r"\{\{([A-Z_]+)\}\}", template)) != set(values):
-        raise ValueError("Report template placeholders are invalid.")
+        raise ReportError("Report template placeholders are invalid.")
     return re.sub(r"\{\{([A-Z_]+)\}\}", lambda match: values[match.group(1)], template)
 
 
@@ -248,15 +265,30 @@ def main(argv=None):
     parser.add_argument("--lang", default="en", help="Document language tag, such as en or fr; shell labels remain English")
     parser.add_argument("-o", "--output", required=True, type=Path, help="New self-contained HTML file; existing files are never overwritten")
     args = parser.parse_args(argv)
+    role = "source file"
     try:
         with args.source.open("rb") as stream:
             data = stream.read(MAX_BYTES + 1)
         if len(data) > MAX_BYTES:
-            raise ValueError("Report input exceeds 2 MB.")
-        document = render_report(data.decode("utf-8"), args.lang)
+            raise ReportError("Report input exceeds 2 MB.")
+        try:
+            source = data.decode("utf-8")
+        except UnicodeError:
+            # The codec's own message quotes input bytes; keep it out of stderr.
+            raise ReportError("The Markdown report must be UTF-8 text.") from None
+        role = "bundled assets"
+        document = render_report(source, args.lang)
+        role = "output path"
         publish_new(args.output, document.encode("utf-8"))
-    except (OSError, ValueError, UnicodeError):
-        print("Could not render report. Check the sanitised Markdown, bundled assets and new output path. Existing files were preserved.", file=sys.stderr)
+    except ReportError as error:
+        print(f"Could not render report: {error} Existing files were preserved.", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"Could not render report: {describe_os_error(role, error)} "
+              "Output paths must be new. Existing files were preserved.", file=sys.stderr)
+        return 1
+    except (ValueError, UnicodeError):
+        print(GENERIC_FAILURE, file=sys.stderr)
         return 1
     print("Offline HTML report created. Review it before sharing or printing to PDF.")
     return 0

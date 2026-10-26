@@ -337,8 +337,10 @@ class ReportCLITests(unittest.TestCase):
     def assert_failure(self, result):
         self.assertEqual(result.returncode, 1)
         self.assertEqual(result.stdout, "")
-        self.assertEqual(result.stderr, "Could not manage report. Check the pre-sanitised schema, revision, bundled assets "
-                         "and fresh output path. Inputs and existing files were not modified.\n")
+        # Specific, value-free diagnostics on one line (#29).
+        self.assertTrue(result.stderr.startswith("Could not manage report"), result.stderr)
+        self.assertTrue(result.stderr.endswith("Inputs and existing files were not modified.\n"), result.stderr)
+        self.assertEqual(result.stderr.count("\n"), 1)
         self.assertNotIn("SYNTHETIC_CANARY", result.stderr)
         self.assertNotIn(str(self.directory), result.stderr)
         self.assertFalse(list(self.directory.glob(".report-*")))
