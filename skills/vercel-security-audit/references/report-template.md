@@ -62,7 +62,7 @@ This block is mandatory even when there are no known limits, including in a draf
 ### [Source/feed alias]
 
 - Source/feed: [verified tool/view description, scoped aliases, observation UTC and associated check IDs; planned or used].
-- Window: [requested and actually covered start/end UTC; retention boundary or unknown].
+- Window: [requested and actually covered start/end UTC, using the returned period for bucketed feeds such as firewall traffic; bucket size and retention boundary, or unknown].
 - Reported total: [product-reported count and what it measures, or unknown].
 - Received: [unique records received; deduplication/overlap limits or unknown].
 - Inspected: [records individually inspected, separate from aggregate totals; sample boundaries].
