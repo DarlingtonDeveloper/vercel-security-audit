@@ -24,9 +24,11 @@ Write one row per check, all 24 core checks in checklist order, and the four opt
 
 Keep this short and in plain language: a few sentences or bullets a non-technical reader can follow. Leave evidence references, field names and other technical detail to the appendix.
 
+Show summary times in a friendly form in the agent host's local time zone, followed by UTC, for example `26 Oct 2026, 13:44-14:40 local time (CET, Europe/Paris; 12:44-13:40 UTC)`. Read the zone from the host itself (for example its configured zone name, or `date '+%Z %z'`), and name it: an abbreviation such as BST or CET and the zone name such as Europe/London when the host exposes them, otherwise the UTC offset. Do not infer the zone from the team's, customer's or reader's location. Include the date on both ends when the window crosses midnight. If the host zone is unknown, give the UTC window alone and say local time is unavailable. Keep exact UTC timestamps in evidence records, coverage limits, Owner statement times and the appendix.
+
 Your review identifies confirmed configuration strengths and practical improvements within the scope below. Unknowns are recorded separately so that missing access does not become an unsupported finding.
 
-- Reviewed at: [UTC timestamp or observation window].
+- Reviewed at: [friendly local window naming the zone, then UTC; for example 26 Oct 2026, 13:44-14:40 local time (CET, Europe/Paris; 12:44-13:40 UTC)].
 - Authorized scope: [owner-confirmed account/team aliases and included project/environment aliases].
 - Method: read-only public Vercel plugin/CLI supported reads, with browser verification in your own-team dashboard.
 - Overall takeaway: [brief, evidence-grounded statement; no unconditional claim that the account or application is safe].
@@ -178,7 +180,7 @@ Mandatory components and their fixed rules:
 
 1. Title: the first line is one `# ` heading naming the reviewed scope alias. The renderer requires this.
 2. Status matrix: opens the report, directly after the title and any draft notice, before the review summary. It is a pipe table with one row per check (24 core checks, then the four optional checks in a separate table), a Team column and one column per in-scope project alias. Each cell holds exactly one of the five status keys, or Team-wide or By project. It uses the five statuses, never pass, warning or fail. It summarises the appendix and must not show a better result than the appendix supports; its badges are not counted as outcomes.
-3. Review summary: short and plain-language, with technical detail left to the appendix. It gives the review time or window, the authorised scope, the method, an evidence-grounded overall takeaway with no unconditional safety claim, separate core and optional status counts, `Changes made: none`, and the point-in-time statement that this is not a penetration test, certification, compliance assessment or monitoring. Place it before the recommendations.
+3. Review summary: short and plain-language, with technical detail left to the appendix. It gives the review time or window in friendly local time with UTC alongside (exact UTC stays in the evidence and appendix), the authorised scope, the method, an evidence-grounded overall takeaway with no unconditional safety claim, separate core and optional status counts, `Changes made: none`, and the point-in-time statement that this is not a penetration test, certification, compliance assessment or monitoring. Place it before the recommendations.
 4. Initial priorities: at most three evidence-backed priorities, each with its topic ID and responsible role, placed before the recommendations. Use fewer when the evidence supports fewer; never promote an unknown to a confirmed weakness.
 5. Confirmed strengths: only checks recorded as satisfactory, each with its limited benefit and evidence reference, or an explicit statement that none are confirmed. It may be merged into the summary.
 6. Scope and limitations: included and excluded scope, authorisation, sources used, missing, conflicting or stale evidence, labelled Owner statements, observed plan and entitlements, applicability decisions and documentation verification, with the inference cautions from the example layout.
