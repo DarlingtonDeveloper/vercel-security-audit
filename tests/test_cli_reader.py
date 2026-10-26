@@ -40,6 +40,11 @@ SECURITY = {"report": {
                            "samples": [{"id": "prj_" + CANARY, "label": CANARY + "-project",
                                         "samples": [{"id": "env_1", "label": CANARY + "_SECRET_NAME"}]}]},
     "deployment-protection": {"violationsCount": 0, "totalCount": 4, "sampleType": ["project"], "samples": []},
+    "members-no-mfa": {"violationsCount": 0, "totalCount": 0, "sampleType": ["user"], "samples": []},
+    # Observed live on CLI 62.7.0: some checks omit totalCount.
+    "depl-no-git-fork-protection": {"violationsCount": 0, "sampleType": ["project"], "samples": []},
+    "odd-counts": {"violationsCount": -1, "totalCount": "3"},
+    "string-total": {"violationsCount": 0, "totalCount": "3"},
     CANARY + "_ODD KEY": {"violationsCount": 1},
 }}
 PROJECTS = {"contextName": CANARY, "elapsed": "1s", "pagination": {"count": 1, "next": None, "prev": 1},
@@ -146,10 +151,19 @@ class CLIReaderTests(unittest.TestCase):
     def test_security_check_keeps_counts_and_drops_samples(self):
         output = self.ok("security-check", *SCOPE)
         checks = output["result"]["checks"]
-        self.assertEqual(checks["env-vars-plaintext"], {"violationsCount": 2, "totalCount": 9,
+        self.assertEqual(checks["env-vars-plaintext"], {"productResult": "violations_found",
+                                                        "violationsCount": 2, "totalCount": 9,
                                                         "sampleType": ["envVar"], "samplesReceived": 1})
         self.assertEqual(checks["deployment-protection"]["violationsCount"], 0)
         self.assertEqual(output["result"]["withheldCheckKeys"], 1)
+
+    def test_security_check_mapping_is_conservative_and_muted_is_undetectable(self):
+        output = self.ok("security-check", *SCOPE)["result"]
+        results = {key: value["productResult"] for key, value in output["checks"].items()}
+        self.assertEqual(results, {"env-vars-plaintext": "violations_found", "deployment-protection": "no_violations",
+                                   "members-no-mfa": "nothing_evaluated", "depl-no-git-fork-protection": "no_violations_total_unreported",
+                                   "odd-counts": "unknown", "string-total": "unknown"})
+        self.assertIs(output["mutedDetectable"], False)
 
     def test_whoami_keeps_username_only(self):
         self.assertEqual(self.ok("whoami")["result"], {"username": "example-user"})
