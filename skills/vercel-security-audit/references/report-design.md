@@ -74,7 +74,7 @@ python3 -B "$skill_dir/scripts/check_report.py" "$report_html" \
   --evidence-json "$sanitised_evidence_json"
 ```
 
-Both JSON arguments are optional. Exit 0 means the requested structural checks passed; exit 1 means an input/check failed (diagnostics intentionally do not echo evidence); invalid CLI arguments exit 2. Standard output on success is a JSON QA result, not an audit report. Keep that result with the private deliverables. No JSON report builder or mandatory audit schema is introduced here.
+Both JSON arguments are optional. Exit 0 means the requested structural checks passed; exit 1 means an input/check failed, and the message names the failing rule (for example a missing appendix section, a duplicate check or mismatched expected counts) without echoing report content, keys or paths; invalid CLI arguments exit 2. Standard output on success is a JSON QA result, not an audit report. Keep that result with the private deliverables. No JSON report builder or mandatory audit schema is introduced here.
 
 ### Count comparison contract
 
