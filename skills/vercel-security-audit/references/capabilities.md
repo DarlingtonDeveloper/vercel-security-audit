@@ -14,6 +14,20 @@ Plugin skill names currently include vercel-cli and vercel-firewall. Their guida
 
 Before inventory or configuration collection, complete [collection-plan.md](collection-plan.md). Record host browser capabilities, connector read OAuth scopes or equivalent grants, browser authentication through user handoff, and connector/CLI-to-browser account/team match. Do not assume a working browser from an authenticated API connection. Browser authentication or privacy failures require an explicit limited-scope API-only confirmation or a pause, not silent fallback or permanent exclusion of portable Markdown hosts.
 
+## CLI version
+
+Minimum tested CLI version: 62.7.0 (help checked) and 65.0.0 (guided test run). Older versions can lack whole command groups: CLI 54.18.0 has no `security` command at all. Newer versions can change defaults and output shapes; for example, CLI 65 defaults to non-interactive mode when it detects an agent.
+
+When using the CLI fallback, check the installed version first:
+
+```sh
+vercel --version
+```
+
+If it is older than the minimum tested version, or not the latest release, recommend that the user updates the CLI themselves before collection and say why (missing commands, changed output). This is guidance, not a requirement: do not install, upgrade or download the CLI yourself, and continue with the installed version if the user declines. Record the version used in the report's sources.
+
+If `vercel security --help` (or another documented command's help) reports an unknown command or subcommand, record a capability gap for the affected checks with an "upgrade the CLI" note in the report. Do not retry, guess equivalent commands, call the REST API or substitute another tool to fill the gap; the affected checks stay not_reviewed unless another verified safe route covers them.
+
 ## Identity and scope
 
 Start with these read-only checks after discovering the executable:
@@ -31,7 +45,7 @@ Do not automatically run login, switch, link, pull, setup or installation comman
 
 ## Discovery examples, not an executable collection script
 
-These command families and flags were checked against CLI 62.7.0 help. Re-check installed help because support and retention change. All examples below are reads, but their raw output is still potentially sensitive.
+These command families and flags were checked against CLI 62.7.0 help; see [CLI version](#cli-version). Re-check installed help because support and retention change. All examples below are reads, but their raw output is still potentially sensitive.
 
 ```sh
 vercel security check --help
