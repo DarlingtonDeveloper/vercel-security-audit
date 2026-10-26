@@ -37,7 +37,15 @@ python3 -I -B "$skill_dir/scripts/cli_read.py" version
 python3 -I -B "$skill_dir/scripts/cli_read.py" whoami
 ```
 
-Team discovery (`vercel teams list`) is also an account read: never run it directly. Confirm the intended team slug and approved project list with the user. Pass explicit --scope and --project flags where supported by current help. Use the CLI's existing secure authentication or the host's managed connector. Never place credential values in arguments, chat, generated examples or evidence. Do not use debug mode or generate authenticated curl commands.
+Ask for the team slug before any account read; agreeing scope needs none. Then confirm membership of that team only:
+
+```sh
+python3 -I -B "$skill_dir/scripts/cli_read.py" team-check --scope "$team_slug"
+```
+
+It prints only whether the account is a member of that one team, its plan and whether it is the CLI's current team; other teams are never printed or counted. `member: unknown` means the team was not on the pages read, so membership is not established. Never run `vercel teams list` directly or list teams to help the user choose: ask them to copy the slug from their own dashboard URL instead. A personal account cannot be passed as `--scope` (the CLI rejects it; the reader reports `personal_scope_rejected`), so agree a team slug.
+
+Confirm the intended team slug and approved project list with the user. Pass explicit --scope and --project flags where supported by current help. Use the CLI's existing secure authentication or the host's managed connector. Never place credential values in arguments, chat, generated examples or evidence. Do not use debug mode or generate authenticated curl commands.
 
 A token inherits its user's role and scope; the token's presence is not proof of read-only permissions. Choose least-privilege access available for the requested checks. An Owner may need to confirm identity settings through their own browser; this does not justify obtaining their credentials.
 
@@ -96,6 +104,7 @@ Each reader read maps to exactly one underlying command. These were checked agai
 ```text
 version                  vercel --version
 whoami                   vercel whoami
+team-check               vercel teams list
 security-check           vercel security check --scope <team> [--project <id>]
 project-ls               vercel project ls --scope <team>
 firewall-status          vercel firewall status --scope <team> --project <id>
@@ -114,6 +123,7 @@ domains                  vercel domains list --scope <team> --limit 100
 What each read keeps, and what it drops before output:
 
 - whoami: username only; email, display name and current team are dropped.
+- team-check: for the agreed slug only, member (true, false or unknown), plan and whether it is the current team. No other team is printed or counted.
 - security-check: per product check slug, violationsCount, totalCount, sampleType and the number of samples received. Samples (project, deployment, member and environment variable names and IDs) are dropped.
 - project-ls: project id, name, deprecated flag, Node.js version and updatedAt; production URLs are dropped. Inventory identifiers appear only after team-wide inventory authorisation.
 - firewall-status: enabled states, actions, rule counts, draft changes, IP block count, bypass counts and states, request-flow step and ruleset IDs and states, and the ruleset unavailable reason (for example plan). Labels, descriptions, bypass skips and upgrade URLs are dropped.

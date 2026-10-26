@@ -66,6 +66,10 @@ FIXTURES = {
     "whoami": {"json": {"username": "example-user", "email": CANARY + "@example.test", "name": CANARY,
                         "team": {"slug": CANARY, "name": CANARY}}},
     "security check --scope example-team": {"json": SECURITY},
+    "teams list": {"json": {"pagination": {"count": 3, "next": None, "prev": 1}, "teams": [
+        {"current": False, "id": "team_1", "name": CANARY + " Other Org", "plan": "enterprise", "slug": CANARY.lower() + "-org"},
+        {"current": True, "id": "team_2", "name": "Example", "plan": "pro", "slug": "example-team"},
+        {"current": False, "id": "team_3", "name": CANARY + " Side", "plan": "hobby", "slug": "side-" + CANARY.lower()}]}},
     "project ls --scope example-team": {"json": PROJECTS},
     "firewall status --scope example-team --project prj_1": {"json": FIREWALL},
     "firewall rules list --scope example-team --project prj_1": {"json": RULES},
@@ -170,6 +174,15 @@ class CLIReaderTests(unittest.TestCase):
         self.assertEqual(output["result"], {"domainsCount": 2, "domains": [
             {"alias": "domain-1", "flags": {"verified": True}}, {"alias": "domain-2", "flags": {"verified": False}}]})
         self.assertNotIn(".example", json.dumps(output))
+
+    def test_team_check_reports_only_the_agreed_team(self):
+        output = self.ok("team-check", *SCOPE)
+        self.assertEqual(output["result"], {"member": True, "plan": "pro", "current": True})
+        self.assertNotIn(CANARY.lower(), json.dumps(output))
+        self.assertNotIn("enterprise", json.dumps(output))
+        self.assertEqual(self.ok("team-check", "--scope", "not-mine")["result"], {"member": False})
+        result = self.read("team-check")
+        self.assertEqual(result.returncode, 2)
 
     def test_failures_are_fixed_kinds_without_cli_text(self):
         self.assertEqual(self.failure("webhooks", *SCOPE)["failure"], "invalid_json")
