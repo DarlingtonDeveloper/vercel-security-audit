@@ -94,7 +94,7 @@ class PublicSkillTests(unittest.TestCase):
     def test_capability_command_examples_are_inspection_only(self):
         text = (SKILL_DIR / "references" / "capabilities.md").read_text()
         allowed = (
-            "whoami", "teams list", "security check", "project ls", "firewall status",
+            "--version", "whoami", "teams list", "security check", "project ls", "firewall status",
             "firewall overview", "firewall rules list", "firewall system-bypass list",
             "firewall bot-management", "firewall traffic list", "firewall alerts list",
             "activity", "webhooks list", "integration list", "domains list",

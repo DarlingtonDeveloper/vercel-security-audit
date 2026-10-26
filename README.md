@@ -22,7 +22,7 @@ The public CLI already has security check and detailed firewall inspection comma
 
 - A host that loads standard SKILL.md instructions and reference files.
 - Your normal, authorised Vercel account access.
-- Vercel plugin read capabilities and/or an installed Vercel CLI.
+- Vercel plugin read capabilities and/or an installed Vercel CLI. Minimum tested CLI version: 62.7.0 (help checked) and 65.0.0 (guided test run). Updating to the latest CLI before an audit is recommended, not required. Older CLIs can lack the `security` command entirely (54.18.0 does); the skill then records that check as a capability gap with an "upgrade the CLI" note rather than guessing equivalent commands.
 - Browser tools for dashboard-only evidence and human authentication handoff.
 - File writing for saved reports, or a conversation-only fallback.
 
