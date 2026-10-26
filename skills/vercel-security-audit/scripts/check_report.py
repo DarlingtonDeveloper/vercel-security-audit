@@ -12,7 +12,7 @@ import sys
 # Resolve the sibling renderer from this file, not sys.path[0], so the helper
 # also works under python -I (which does not add the script directory).
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from render_report import safe_link
+from render_report import ReportError, describe_os_error, safe_link
 
 SKILL = Path(__file__).resolve().parents[1]
 MAX_BYTES = 8_000_000
@@ -54,7 +54,7 @@ class Document(HTMLParser):
         self.feed(text)
         self.close()
         if len(self.stack) != 1 or self.declarations != ["doctype html"]:
-            raise ValueError("Expected balanced HTML with one HTML doctype")
+            raise ReportError("Expected balanced HTML with one HTML doctype.")
 
     def handle_decl(self, value):
         self.declarations.append(value.lower())
@@ -62,12 +62,12 @@ class Document(HTMLParser):
     def handle_starttag(self, tag, attrs):
         node = Node(tag, attrs)
         if len(node.names) != len(set(node.names)):
-            raise ValueError("Duplicate HTML attribute")
+            raise ReportError("Duplicate HTML attribute.")
         self.stack[-1].children.append(node)
         if tag not in self.VOID:
             self.stack.append(node)
         if len(self.stack) > 64:
-            raise ValueError("HTML nesting exceeds checker limit")
+            raise ReportError("HTML nesting exceeds checker limit.")
 
     def handle_startendtag(self, tag, attrs):
         self.handle_starttag(tag, attrs)
@@ -76,27 +76,27 @@ class Document(HTMLParser):
 
     def handle_endtag(self, tag):
         if len(self.stack) == 1 or self.stack[-1].tag != tag:
-            raise ValueError("Unbalanced HTML")
+            raise ReportError("Unbalanced HTML.")
         self.stack.pop()
 
     def handle_data(self, value):
         self.stack[-1].children.append(value)
 
     def handle_comment(self, value):
-        raise ValueError("Comments are outside the generated HTML dialect")
+        raise ReportError("Comments are outside the generated HTML dialect.")
 
     def handle_pi(self, value):
-        raise ValueError("Processing instructions are not supported")
+        raise ReportError("Processing instructions are not supported.")
 
     def unknown_decl(self, value):
-        raise ValueError("Unsupported declaration")
+        raise ReportError("Unsupported declaration.")
 
 
 def read_text(path):
     with path.open("rb") as stream:
         data = stream.read(MAX_BYTES + 1)
     if len(data) > MAX_BYTES or b"\0" in data:
-        raise ValueError("Input is invalid or exceeds 8 MB")
+        raise ReportError("Input is invalid or exceeds 8 MB.")
     return data.decode("utf-8")
 
 
@@ -105,7 +105,7 @@ def read_json(path):
         result = {}
         for key, value in pairs:
             if key in result:
-                raise ValueError("Duplicate JSON key")
+                raise ReportError("Duplicate JSON key.")
             result[key] = value
         return result
     return json.loads(read_text(path), object_pairs_hook=unique)
@@ -122,20 +122,20 @@ def check_passive(root):
     nodes = root.find()
     for node in nodes:
         if node.tag not in tags or set(node.attrs) - attributes.get(node.tag, set()) - {"class", "id"}:
-            raise ValueError("HTML is outside the passive generated dialect")
+            raise ReportError("HTML is outside the passive generated dialect.")
         if any(value is None for value in node.attrs.values()):
-            raise ValueError("Unexpected valueless attribute")
+            raise ReportError("Unexpected valueless attribute.")
         if re.search(r"logo", node.attrs.get("class", "") + " " + node.attrs.get("id", ""), re.I):
-            raise ValueError("Logo markup is unsuitable for the community report")
+            raise ReportError("Logo markup is unsuitable for the community report.")
         if node.tag == "a" and (not safe_link(node.attrs.get("href"))
                                 or set(node.attrs.get("rel", "").split()) != {"noopener", "noreferrer"}):
             # Generated navigation anchors have no rel and remain same-document.
             if not (re.fullmatch(r"#[a-zA-Z][a-zA-Z0-9_-]*", node.attrs.get("href", ""))
                     and set(node.attrs) <= {"href"}):
-                raise ValueError("Unsafe or non-generated link")
+                raise ReportError("Unsafe or non-generated link.")
     for tag in ("html", "head", "body", "title", "style", "main", "header", "footer", "h1"):
         if len(root.find(tag)) != 1:
-            raise ValueError("Required document landmark missing or duplicated")
+            raise ReportError("Required document landmark missing or duplicated.")
     html, = root.find("html")
     head, = root.find("head")
     body, = root.find("body")
@@ -146,34 +146,34 @@ def check_passive(root):
             or any(n.tag not in {"meta", "title", "style"} for n in head.find())
             or any(n.tag in {"meta", "title", "style", "head", "html"} for n in body.find())
             or len(body.find("main")) != 1):
-        raise ValueError("Unexpected document landmark nesting")
+        raise ReportError("Unexpected document landmark nesting.")
     identifiers = [n.attrs["id"] for n in nodes if "id" in n.attrs]
     if len(identifiers) != len(set(identifiers)):
-        raise ValueError("Duplicate HTML ID")
+        raise ReportError("Duplicate HTML ID.")
     for link in root.find("a"):
         href = link.attrs["href"]
         if href.startswith("#") and href[1:] not in identifiers:
-            raise ValueError("Unresolved local navigation")
+            raise ReportError("Unresolved local navigation.")
     policies = []
     for meta in root.find("meta"):
         if "http-equiv" in meta.attrs:
             if meta.attrs["http-equiv"].lower() != "content-security-policy":
-                raise ValueError("Unexpected HTTP-equivalent meta")
+                raise ReportError("Unexpected HTTP-equivalent meta.")
             policies.append(meta)
     if len(policies) != 1 or policies[0] not in head.children or head.children.index(policies[0]) > head.children.index(style):
-        raise ValueError("One CSP is required before embedded style")
+        raise ReportError("One CSP is required before embedded style.")
     directives = {}
     for entry in policies[0].attrs.get("content", "").split(";"):
         parts = entry.split()
         if parts:
             if parts[0] in directives:
-                raise ValueError("Duplicate CSP directive")
+                raise ReportError("Duplicate CSP directive.")
             directives[parts[0]] = parts[1:]
     expected = {name: ["'none'"] for name in (
         "default-src", "img-src", "connect-src", "script-src", "form-action", "base-uri", "object-src")}
     expected.update({"style-src": ["'unsafe-inline'"], "font-src": ["data:"]})
     if directives != expected:
-        raise ValueError("CSP differs from the bundled deny-by-default policy")
+        raise ReportError("CSP differs from the bundled deny-by-default policy.")
     # Exact trusted CSS matching avoids claiming a regex is a general CSS parser.
     # This also rejects escapes, imports, remote url(), and hidden logo additions.
     fonts = []
@@ -182,13 +182,13 @@ def check_passive(root):
                                       ("Geist Mono", "400", "GeistMono-Regular.woff2")):
         data = (SKILL / "assets" / "fonts" / filename).read_bytes()
         if data[:4] != b"wOF2":
-            raise ValueError("Bundled WOFF2 is invalid")
+            raise ReportError("Bundled WOFF2 is invalid.")
         encoded = base64.b64encode(data).decode("ascii")
         fonts.append("@font-face{font-family:'" + family + "';font-style:normal;font-weight:" + weight
                      + ";font-display:swap;src:url(data:font/woff2;base64," + encoded + ") format('woff2');}")
     expected_style = "\n".join(fonts) + "\n" + (SKILL / "assets" / "report.css").read_text(encoding="utf-8")
     if style.text != expected_style:
-        raise ValueError("Embedded styles/fonts differ from trusted bundled assets")
+        raise ReportError("Embedded styles/fonts differ from trusted bundled assets.")
     header, = root.find("header")
     footer, = root.find("footer")
     for node, phrases in ((header, (
@@ -198,7 +198,7 @@ def check_passive(root):
             (footer, ("Community-maintained · Unofficial", "Not endorsed by Vercel.",
                       "this report does not certify security or compliance."))):
         if any(phrase not in node.text for phrase in phrases):
-            raise ValueError("Required community/unofficial disclaimer is missing")
+            raise ReportError("Required community/unofficial disclaimer is missing.")
 
 
 def check_counts(root):
@@ -207,18 +207,22 @@ def check_counts(root):
     groups = {name: set(re.findall(r"^### ([A-Z]{3}-\d{2})", text, re.M))
               for name, text in (("core", core_text), ("optional", optional_text))}
     if len(groups["core"]) != 24 or len(groups["optional"]) != 4 or groups["core"] & groups["optional"]:
-        raise ValueError("Bundled checklist IDs are invalid")
+        raise ReportError("Bundled checklist IDs are invalid.")
     outcomes = {}
     main, = root.find("main")
-    for section in root.find("section", "appendix"):
+    appendix = root.find("section", "appendix")
+    if not appendix:
+        raise ReportError("No appendix section found. Put check outcomes under second-level headings "
+                         "that begin with Appendix, for example ## Appendix: Identity and access.")
+    for section in appendix:
         if section not in main.children or any(heading not in section.children for heading in section.find("h3")):
-            raise ValueError("Appendix sections and check headings must be direct children of main/section")
+            raise ReportError("Appendix sections and check headings must be direct children of main/section.")
         current, badges = None, []
 
         def finish():
             if current is not None:
                 if current in outcomes or len(badges) != 1 or badges[0] not in LABELS:
-                    raise ValueError("Each distinct appendix check needs exactly one known status")
+                    raise ReportError("Each distinct appendix check needs exactly one known status.")
                 outcomes[current] = LABELS[badges[0]]
 
         for child in section.children:
@@ -228,16 +232,17 @@ def check_counts(root):
                 finish()
                 match = re.match(r"^([A-Z]{3}-\d{2})\s+-\s+\S", child.text.strip())
                 if not match:
-                    raise ValueError("Appendix check headings must begin with a topic ID and title")
+                    raise ReportError("Appendix check headings must begin with a topic ID and title.")
                 current, badges = match.group(1), []
             found = ([child] if "status-badge" in child.attrs.get("class", "").split() else [])
             found += child.find(cls="status-badge")
             if found and current is None:
-                raise ValueError("Appendix status lacks a check heading")
+                raise ReportError("Appendix status lacks a check heading.")
             badges.extend(node.text.strip() for node in found)
         finish()
     if set(outcomes) != groups["core"] | groups["optional"]:
-        raise ValueError("Appendix must contain all 24 core and four optional IDs exactly once")
+        raise ReportError("Appendix must contain all 24 core and four optional IDs exactly once. Only checks "
+                         "under second-level headings that begin with Appendix are counted.")
     counts = {}
     for name, topics in groups.items():
         counter = Counter(outcomes[topic] for topic in topics)
@@ -247,29 +252,31 @@ def check_counts(root):
 
 def check_summary(summary, counts):
     if not isinstance(summary, dict) or set(summary) != {"core", "optional"}:
-        raise ValueError("Expected summary needs separate core and optional objects")
+        raise ReportError("Expected summary needs separate core and optional objects.")
     for group in counts:
         values = summary[group]
         if (not isinstance(values, dict) or set(values) != set(LABELS.values())
                 or any(type(value) is not int or value < 0 for value in values.values())):
-            raise ValueError("Expected summary needs all five nonnegative integer status counts")
-        if values != counts[group]:
-            raise ValueError("Expected summary counts do not match appendix: " + group)
+            raise ReportError("Expected summary needs all five nonnegative integer status counts.")
+    if summary["core"] != counts["core"]:
+        raise ReportError("Expected summary core counts do not match the appendix.")
+    if summary["optional"] != counts["optional"]:
+        raise ReportError("Expected summary optional counts do not match the appendix.")
 
 
 def check_evidence(source, outcomes):
     """Accept a template-style record or flat records, not a report-builder schema."""
     records = [source] if isinstance(source, dict) else source
     if not isinstance(records, list) or not records:
-        raise ValueError("Evidence needs a record or nonempty list of records")
+        raise ReportError("Evidence needs a record or nonempty list of records.")
     seen = set()
     for record in records:
         if not isinstance(record, dict):
-            raise ValueError("Invalid evidence record")
+            raise ReportError("Invalid evidence record.")
         topic, status = record.get("topic_id"), record.get("status")
         if (not isinstance(topic, str) or not isinstance(status, str)
                 or topic not in outcomes or topic in seen or status != outcomes[topic]):
-            raise ValueError("Evidence topic/status does not match appendix")
+            raise ReportError("Evidence topic/status does not match appendix.")
         seen.add(topic)
     if len(seen) == 28:
         return "matched all 28 checks"
@@ -292,7 +299,19 @@ def main(argv=None):
         result = {"counts": counts, "summary_parity": "matched" if args.expected_summary else "not checked; no expected summary supplied",
                   "evidence_parity": evidence_parity, "passive_html": "matched bundled structural constraints",
                   "visual_qa": "not performed", "network_qa": "structural only; runtime not observed"}
-    except (OSError, ValueError, UnicodeError, RecursionError):
+    except ReportError as error:
+        print(f"Report QA failed: {error} No content echoed.", file=sys.stderr)
+        return 1
+    except json.JSONDecodeError:
+        print("Report QA failed: a JSON input is not valid JSON. No content echoed.", file=sys.stderr)
+        return 1
+    except UnicodeError:
+        print("Report QA failed: inputs must be UTF-8 text. No content echoed.", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"Report QA failed: {describe_os_error('input file', error)} No content echoed.", file=sys.stderr)
+        return 1
+    except (ValueError, RecursionError):
         print("Report QA failed: invalid HTML, counts, JSON or bundled assets. Review locally; no content echoed.", file=sys.stderr)
         return 1
     print(json.dumps(result, indent=2))

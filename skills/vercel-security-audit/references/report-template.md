@@ -131,6 +131,8 @@ For every answer, give the scope alias, role alias, UTC statement time and curre
 
 Repeat this compact record for every required core check, grouped under the eight domains in `checklist.md`. Include optional checks separately, even when not reviewed. Keep the topic IDs and give each check its own third-level heading.
 
+If you group checks under their own domain headings, make each one a second-level heading that begins `Appendix:`, for example `## Appendix: Identity and access` and `## Appendix: optional checks`. The renderer and `check_report.py` count check outcomes only under second-level headings that begin with Appendix; a check under any other heading is not counted and QA fails.
+
 ### [ID] - [Check title]
 
 Status: [satisfactory / action_recommended / needs_confirmation / not_reviewed / not_applicable]
