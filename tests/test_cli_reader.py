@@ -78,6 +78,10 @@ FIXTURES = {
     "domains list --scope example-team --limit 100": {"json": {"pagination": {"count": 2, "next": None, "prev": None},
         "domains": [{"name": CANARY + ".example", "verified": True, "id": CANARY, "nameservers": [CANARY]},
                     {"name": "internal-" + CANARY + ".example", "verified": False, "serviceType": CANARY}]}},
+    "domains list --scope page-team --limit 100": {"json": {"pagination": {"count": 1, "next": 555, "prev": None},
+        "domains": [{"name": CANARY + "-a.example", "verified": True}]}},
+    "domains list --scope page-team --limit 100 --next 555": {"json": {"pagination": {"count": 1, "next": None, "prev": 555},
+        "domains": [{"name": CANARY + "-b.example", "verified": False}]}},
     "webhooks list --scope example-team": {"stdout": "not json " + CANARY},
     "activity --scope example-team --all --since 7d --limit 100": {
         "stderr": "Error: " + CANARY + " is forbidden (403)\n"},
@@ -199,6 +203,12 @@ class CLIReaderTests(unittest.TestCase):
         # Flags are separate argv elements, never one word-split string (the zsh $FLAGS pitfall).
         self.assertIn(["project", "ls", "--scope", "page-team", "--next", "111", "--json", "--non-interactive"],
                       self.argv_log())
+
+    def test_domain_pages_merge_with_unique_aliases(self):
+        output = self.ok("domains", "--scope", "page-team")
+        self.assertEqual([d["alias"] for d in output["result"]["domains"]], ["domain-1", "domain-2"])
+        self.assertEqual(output["result"]["domainsCount"], 2)
+        self.assertTrue(output["coverage"]["complete"])
 
     def test_parse_failure_on_a_later_page_is_incomplete_not_end_of_list(self):
         output = self.failure("project-ls", "--scope", "corrupt-team")

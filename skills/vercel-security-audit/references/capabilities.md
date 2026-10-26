@@ -160,7 +160,7 @@ Important distinctions:
 
 ### Safe pagination with the reader
 
-Paginated CLI reads (`project-ls`, `team-check`, `activity`) are followed inside the bundled reader. Do not write your own shell loop. Shell loops caused false completeness in testing: on zsh an unquoted `$FLAGS` does not word-split, so the CLI rejected `--scope x --project y` as one option, and `echo "$json"` interpreted backslash escapes, corrupted the JSON, and the loop read that as end-of-list. The reader passes every flag as a separate argument, never echoes output through a shell, and applies these rules:
+Paginated CLI reads (`project-ls`, `team-check`, `activity`, `domains`) are followed inside the bundled reader. Do not write your own shell loop. Shell loops caused false completeness in testing: on zsh an unquoted `$FLAGS` does not word-split, so the CLI rejected `--scope x --project y` as one option, and `echo "$json"` interpreted backslash escapes, corrupted the JSON, and the loop read that as end-of-list. The reader passes every flag as a separate argument, never echoes output through a shell, and applies these rules:
 
 - End of list is established only by a successfully parsed page whose `pagination.next` is explicitly null. That is `coverage.endOfList: known` and `coverage.complete: true`.
 - A parse failure, CLI error or timeout on any page, a missing or malformed cursor, a repeated cursor, or reaching the page cap (`--max-pages`, default 20, at most 50) stops the read with `ok: false`, `coverage.complete: false` and `coverage.stoppedBecause`. It is never end-of-list.

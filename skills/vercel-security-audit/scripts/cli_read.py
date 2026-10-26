@@ -337,6 +337,11 @@ def combine(read, pages, slug):
     selected = [READS[read][1](page) for page in pages]
     if read == "project-ls":
         return {"projects": [p for page in selected for p in page["projects"]]}
+    if read == "domains":
+        merged = [d for page in selected for d in page["domains"]]
+        for index, domain in enumerate(merged, start=1):
+            domain["alias"] = f"domain-{index}"  # aliases stay unique across pages
+        return {"domainsCount": _sum([page["domainsCount"] for page in selected]), "domains": merged}
     if read == "activity":
         types = {}
         for page in selected:
