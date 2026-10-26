@@ -45,7 +45,8 @@ class ToolRoutingTests(unittest.TestCase):
 
     def test_cli_routes_use_existing_documented_reads_or_are_unsupported(self):
         capabilities = (REFS / "capabilities.md").read_text()
-        commands = set(re.findall(r"^vercel (.+?)(?: --|$)", capabilities, re.M))
+        # Direct help lines and the bundled reader's read -> command mapping (#32).
+        commands = set(re.findall(r"^(?:[a-z-]+ +)?vercel (.+?)(?: --| \[|$)", capabilities, re.M))
         self.assertTrue(commands)
         for check_id, route in self.routes.items():
             value = route["CLI"]

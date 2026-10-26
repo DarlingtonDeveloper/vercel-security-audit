@@ -30,22 +30,24 @@ If `vercel security --help` (or another documented command's help) reports an un
 
 ## Identity and scope
 
-Start with these read-only checks after discovering the executable:
+Start with these read-only checks after discovering the executable, through the [bundled reader](#cli-account-reads-bundled-reader-only):
 
 ```sh
-vercel whoami
-vercel teams list
+python3 -I -B "$skill_dir/scripts/cli_read.py" version
+python3 -I -B "$skill_dir/scripts/cli_read.py" whoami
 ```
 
-Confirm the intended team slug and approved project list with the user. Pass explicit --scope and --project flags where supported by current help. Use the CLI's existing secure authentication or the host's managed connector. Never place credential values in arguments, chat, generated examples or evidence. Do not use debug mode or generate authenticated curl commands.
+Team discovery (`vercel teams list`) is also an account read: never run it directly. Confirm the intended team slug and approved project list with the user. Pass explicit --scope and --project flags where supported by current help. Use the CLI's existing secure authentication or the host's managed connector. Never place credential values in arguments, chat, generated examples or evidence. Do not use debug mode or generate authenticated curl commands.
 
 A token inherits its user's role and scope; the token's presence is not proof of read-only permissions. Choose least-privilege access available for the requested checks. An Owner may need to confirm identity settings through their own browser; this does not justify obtaining their credentials.
 
 Do not automatically run login, switch, link, pull, setup or installation commands. Normal user-completed authentication is separate from collecting evidence. Prefer explicit scope and project flags to relinking the user's workspace. Never invoke bare vercel: its default command is deploy.
 
-## Discovery examples, not an executable collection script
+## CLI account reads: bundled reader only
 
-These command families and flags were checked against CLI 62.7.0 help; see [CLI version](#cli-version). Re-check installed help because support and retention change. All examples below are reads, but their raw output is still potentially sensitive.
+Every CLI account read goes through the bundled reader, `scripts/cli_read.py` in the installed skill directory. It runs one documented read command as an argument list (no shell), always adds `--json` and `--non-interactive`, keeps the raw output inside its own process and prints only that read's allow-listed fields as JSON. CLI error text is never echoed; failures are reported as fixed kinds such as `permission`, `not_authenticated`, `unknown_command`, `timeout` or `invalid_json`, always with `coverage.complete: false`.
+
+Never run a documented account read directly, even for discovery. In agent hosts the CLI defaults to non-interactive mode, and a plain `vercel security check` (no `--json`, no `--findings`) has printed full JSON including finding samples: project names and IDs and environment variable names. Do not pipe a read through your own filter, redirect it, use tee or record a terminal session instead of the reader. Help output is not an account read and may be inspected directly:
 
 ```sh
 vercel security check --help
@@ -56,24 +58,55 @@ vercel firewall traffic list --help
 vercel activity --help
 ```
 
-For the following patterns, substitute a confirmed team/project identifier as a single quoted argument. Team-wide security checks, project inventory, activity --all, webhook listings and integration --all require explicit team-wide read authorisation, separately from any selected-project review. Use supported server-side project filters for a project-only scope; if a command still returns team-level findings or cannot filter, omit it or ask for broader read permission before execution. Process the result through the host's field-selection/redaction facility before exposing it to the model or saving it. Do not redirect unfiltered JSON, use tee, or record a full terminal/browser session. If safe selection cannot happen before output reaches the transcript, use selected dashboard evidence instead. If unselected output does reach the transcript, follow the [accidental exposure procedure](browser-evidence.md#accidental-exposure-stop-and-hand-off).
+Reader usage, with identifiers already agreed with the user (identifiers that look like flags are rejected):
 
 ```sh
-vercel security check --scope "$team_slug" --json
-vercel security check --scope "$team_slug" --project "$project_id" --json
-vercel project ls --scope "$team_slug" --json
-vercel firewall status --scope "$team_slug" --project "$project_id" --json
-vercel firewall overview --scope "$team_slug" --project "$project_id" --json
-vercel firewall rules list --scope "$team_slug" --project "$project_id" --json
-vercel firewall system-bypass list --scope "$team_slug" --project "$project_id" --json
-vercel firewall bot-management --scope "$team_slug" --project "$project_id" --json
-vercel firewall traffic list --scope "$team_slug" --project "$project_id" --since 24h --dimension action --json
-vercel firewall alerts list --scope "$team_slug" --project "$project_id" --since 24h --json
-vercel activity --scope "$team_slug" --all --since 7d --limit 100 --json
-vercel webhooks list --scope "$team_slug" --json
-vercel integration list --scope "$team_slug" --all --json
-vercel domains list --scope "$team_slug" --limit 100 --json
+python3 -I -B "$skill_dir/scripts/cli_read.py" version
+python3 -I -B "$skill_dir/scripts/cli_read.py" whoami
+python3 -I -B "$skill_dir/scripts/cli_read.py" security-check --scope "$team_slug"
+python3 -I -B "$skill_dir/scripts/cli_read.py" firewall-status --scope "$team_slug" --project "$project_id"
 ```
+
+Team-wide security checks, project inventory, activity, webhook listings and integration listings require explicit team-wide read authorisation, separately from any selected-project review. Use the reader's `--project` filter for a project-only scope where the read supports it; if a read cannot filter to the agreed scope, skip it or ask for broader read permission first. If the reader is unavailable (for example no Python 3), CLI account reads are unavailable: use selected dashboard evidence, owner statements or record the gap. If unselected output does reach the transcript, follow the [accidental exposure procedure](browser-evidence.md#accidental-exposure-stop-and-hand-off).
+
+Each reader read maps to exactly one underlying command. These were checked against CLI 62.7.0 help, and their JSON shapes against a keys-and-types-only probe of a real team; see [CLI version](#cli-version). They are listed for traceability, not for direct execution:
+
+```text
+version                  vercel --version
+whoami                   vercel whoami
+security-check           vercel security check --scope <team> [--project <id>]
+project-ls               vercel project ls --scope <team>
+firewall-status          vercel firewall status --scope <team> --project <id>
+firewall-overview        vercel firewall overview --scope <team> --project <id>
+firewall-rules           vercel firewall rules list --scope <team> --project <id>
+firewall-system-bypass   vercel firewall system-bypass list --scope <team> --project <id>
+firewall-bot-management  vercel firewall bot-management --scope <team> --project <id>
+firewall-traffic         vercel firewall traffic list --scope <team> --project <id> --since <window> --dimension action
+firewall-alerts          vercel firewall alerts list --scope <team> --project <id> --since <window>
+activity                 vercel activity --scope <team> --all --since <window> --limit 100
+webhooks                 vercel webhooks list --scope <team>
+integrations             vercel integration list --scope <team> --all
+domains                  vercel domains list --scope <team> --limit 100
+```
+
+What each read keeps, and what it drops before output:
+
+- whoami: username only; email, display name and current team are dropped.
+- security-check: per product check slug, violationsCount, totalCount, sampleType and the number of samples received. Samples (project, deployment, member and environment variable names and IDs) are dropped.
+- project-ls: project id, name, deprecated flag, Node.js version and updatedAt; production URLs are dropped. Inventory identifiers appear only after team-wide inventory authorisation.
+- firewall-status: enabled states, actions, rule counts, draft changes, IP block count, bypass counts and states, request-flow step and ruleset IDs and states, and the ruleset unavailable reason (for example plan). Labels, descriptions, bypass skips and upgrade URLs are dropped.
+- firewall-overview: period, granularity, Attack Mode state, attacks mitigated, whether a draft exists and counts of top rules and annotations.
+- firewall-rules: draft flag, pending changes, custom rule count and each rule's active state, and managed ruleset IDs and actions. Custom rule names, conditions, header values and paths are dropped.
+- firewall-system-bypass: entry count only.
+- firewall-bot-management: managed ruleset IDs and actions, and the number of unknown-bot traffic rows.
+- firewall-traffic: period and, per top list, the dimension and rows keeping only enum-shaped keys (such as an action name) and numbers. IPs, hosts and paths become unknown.
+- firewall-alerts: active and resolved counts.
+- activity: event count and counts per event type.
+- webhooks: webhook count and response status; destination URLs are dropped.
+- integrations: per resource, marketplace product name, status and number of connected projects; resource names and IDs are dropped.
+- domains: domain count and, per domain, a synthetic alias (`domain-1`, `domain-2`, ...) assigned in the reader with only that domain's boolean flags (for example verification state). Domain names, IDs, nameservers and other strings are dropped before output.
+
+Missing or mistyped fields are reported as `unknown`, never zero or false. Shapes for custom firewall rules, system bypass entries, traffic rows, alerts, activity events and webhooks were empty when verified; the reader therefore keeps only counts and states for them. Re-check with a newer CLI before widening any allow-list, and widen it only in the bundled reader with tests, never with an ad-hoc filter during an audit.
 
 Important distinctions:
 
@@ -86,7 +119,7 @@ Important distinctions:
 - Alert history and alert subscriptions are different. Verify recipients/subscriptions in the browser or a documented read tool.
 - Marketplace resource listings do not establish the complete inventory of Git applications, deploy hooks or other third-party access.
 - Activity payloads, webhook destination URLs and integration configurations can contain sensitive material. Keep only necessary event types, aggregate counts and verified configuration flags. A missing event is not proof an action never happened.
-- domains list is team-wide domain inventory and requires explicit team-wide read authorisation. Its JSON fields were not verified against an account for this guide: inspect the response shape without values first, then select only verification/configuration state fields it actually returns and counts before exposure, and replace domain names with synthetic aliases in that same selection step; hostnames can be sensitive. Follow its verified --next pagination; a page of 20 or 100 is not the whole inventory. Project association, certificate detail and warnings beyond the selected fields stay with the browser or owner routes.
+- domains list is team-wide domain inventory and requires explicit team-wide read authorisation. Use the reader's `domains` read: it replaces domain names with synthetic aliases in the same selection step (hostnames can be sensitive) and keeps only each domain's boolean flags and the count. Only the outer shape (a `domains` list plus pagination) was verified, against a team with no domains; widen the per-domain allow-list in the reader, with tests, once a real item shape is observed. A page of 20 or 100 is not the whole inventory. Project association, certificate detail and warnings beyond the selected fields stay with the browser or owner routes.
 - Certificate listing: certs list in the checked version has no JSON output option, so its table cannot be allow-listed before exposure. Treat it as unsupported unless the installed help documents a structured output that can be selected before exposure.
 - Environment variables: do not run env list/ls. In the checked version its JSON output includes readable environment variable values, so selecting fields afterwards still fetches secrets. Agent hosts may switch plain commands to JSON automatically. SEC-01 stays with the connector, browser or owner routes.
 - Runtime version settings and recent deploy dates do not establish deployed dependency versions, application authentication or whether a site is still used.
