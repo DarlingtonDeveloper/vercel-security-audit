@@ -310,20 +310,90 @@ def read_version(cli):
             "note": "Recommend updating to the latest CLI before collection; do not install or upgrade it yourself."}
 
 
+CURSOR = re.compile(r"[A-Za-z0-9_.:-]{1,200}")
+DEFAULT_MAX_PAGES = 20
+HARD_MAX_PAGES = 50
+
+
+class PartialRead(Exception):
+    """A later page failed: keep the pages already read, never call it complete."""
+
+    def __init__(self, kind, result, coverage):
+        super().__init__(kind)
+        self.kind, self.result, self.coverage = kind, result, coverage
+
+
+def _sum(values):
+    return UNKNOWN if any(v == UNKNOWN for v in values) else sum(values)
+
+
+def combine(read, pages, slug):
+    if read == "team-check":
+        for page in pages:
+            match = select_team_check(page, slug)
+            if match["member"] is True:
+                return match
+        return None  # decided by the caller from end-of-list knowledge
+    selected = [READS[read][1](page) for page in pages]
+    if read == "project-ls":
+        return {"projects": [p for page in selected for p in page["projects"]]}
+    if read == "domains":
+        merged = [d for page in selected for d in page["domains"]]
+        for index, domain in enumerate(merged, start=1):
+            domain["alias"] = f"domain-{index}"  # aliases stay unique across pages
+        return {"domainsCount": _sum([page["domainsCount"] for page in selected]), "domains": merged}
+    if read == "activity":
+        types = {}
+        for page in selected:
+            for kind, count in page["eventTypes"].items():
+                types[kind] = types.get(kind, 0) + count
+        return {"eventsCount": _sum([page["eventsCount"] for page in selected]), "eventTypes": types}
+    return selected[0]
+
+
 def collect(args):
     builder, selector, _, paginated = READS[args.read]
-    data = invoke(args.cli, builder(args))
-    result = select_team_check(data, args.scope) if args.read == "team-check" else selector(data)
-    coverage = {"pages": 1}
-    if paginated:
+    if not paginated:
+        data = invoke(args.cli, builder(args))
+        return selector(data), {"pages": 1, "endOfList": "not_paginated", "complete": UNKNOWN}
+    pages, seen, cursor, end, failure = [], set(), None, UNKNOWN, None
+    while True:
+        argv = builder(args) + (["--next", str(cursor)] if cursor is not None else [])
+        try:
+            data = invoke(args.cli, argv)
+        except ReaderError as error:
+            if not pages:
+                raise
+            failure = error.kind  # never treated as end-of-list
+            break
+        pages.append(data)
+        if args.read == "team-check" and select_team_check(data, args.scope)["member"] is True:
+            end = "not_needed"
+            break
         next_value = _get(data, "pagination", "next")
         if next_value is None:
-            coverage.update(endOfList="known", complete=True)
-        else:
-            # A cursor, or a missing/unknown pagination field, both mean the end is not established.
-            coverage.update(endOfList="not_reached" if next_value != UNKNOWN else UNKNOWN, complete=False)
-    else:
-        coverage.update(endOfList="not_paginated", complete=UNKNOWN)
+            end = "known"
+            break
+        if next_value == UNKNOWN or isinstance(next_value, bool) or not (
+                type(next_value) is int or (isinstance(next_value, str) and CURSOR.fullmatch(next_value))):
+            failure = "invalid_cursor"
+            break
+        if next_value in seen:
+            failure = "repeated_cursor"
+            break
+        if len(pages) >= args.max_pages:
+            failure = "page_cap_reached"
+            break
+        seen.add(next_value)
+        cursor = next_value
+    result = combine(args.read, pages, args.scope)
+    if args.read == "team-check" and result is None:
+        result = {"member": False if end == "known" else UNKNOWN}
+    complete = end in ("known", "not_needed")
+    coverage = {"pages": len(pages), "endOfList": end if end != UNKNOWN else "not_reached", "complete": complete}
+    if failure:
+        coverage["stoppedBecause"] = failure
+        raise PartialRead(failure, result, coverage)
     return result, coverage
 
 
@@ -338,11 +408,15 @@ def main(argv=None):
     parser.add_argument("--scope", help="Agreed team slug")
     parser.add_argument("--project", help="Agreed project ID or name")
     parser.add_argument("--since", default="24h", help="Window for traffic, alerts and activity, e.g. 24h or 7d")
+    parser.add_argument("--max-pages", type=int, default=DEFAULT_MAX_PAGES,
+                        help=f"Page cap for paginated reads (1-{HARD_MAX_PAGES}); reaching it is incomplete coverage")
     parser.add_argument("--cli", default="vercel", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     for value in (args.scope, args.project):
         if value is not None and not IDENTIFIER.fullmatch(value):
             parser.error("identifier")
+    if not 1 <= args.max_pages <= HARD_MAX_PAGES:
+        parser.error("max-pages")
     if not SINCE.fullmatch(args.since):
         parser.error("since")
     output = {"read": args.read}
@@ -357,6 +431,11 @@ def main(argv=None):
                 parser.error("project")
             result, coverage = collect(args)
             output.update(ok=True, result=result, coverage=coverage)
+    except PartialRead as error:
+        # Pages already read are useful bounded observations, labelled as partial.
+        output.update(ok=False, failure=error.kind, partialResult=error.result, coverage=error.coverage)
+        print(json.dumps(output, indent=2, sort_keys=True))
+        return 1
     except ReaderError as error:
         output.update(ok=False, failure=error.kind, coverage={"complete": False})
         if error.kind == "unknown_command":
