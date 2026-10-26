@@ -61,7 +61,11 @@ Label every answer as an owner statement with UTC time, role category, scope ali
 
 Use this round when the owner or authorised user is present in an interactive session, after the planned collection pass and provisional assessment and before the first report is drafted. It is the planned owner-statement route, not a second collection pass, and it closes before drafting starts.
 
-1. Select only checks that are still needs_confirmation and whose missing fact an owner statement could resolve, such as intent, responsible role, review process or an aggregate the owner can see. Leave out checks whose gap needs direct observation, list completeness or enforcement proof, not_reviewed checks and optional checks without per-ID approval.
+1. Select checks in two groups, and only within the authorised scope:
+   - needs_confirmation checks whose missing fact an owner statement could resolve, such as intent, responsible role, review process or an aggregate the owner can see.
+   - not_reviewed checks whose collection was unavailable or had no acceptable pre-exposure selection mechanism, when a safe per-check question exists for that check in the list above. The list has no per-check questions for the optional checks, so they are not included through this group.
+
+   Leave out checks whose gap needs direct observation, list completeness or enforcement proof. Leave out checks not_reviewed because they are unauthorised, including declined or unauthorised optional checks, and checks out of scope. Never use the round to expand scope.
 2. Build the questions from the safe per-check questions above and, where the present Owner's own metadata is still unresolved, the three Owner confirmation question groups in the [report template](report-template.md#owner-confirmation-questionnaire). Ask only about the authorised scope.
 3. Send one batched message, grouped by domain, with each question labelled by check ID. Say at the top that any question can be answered "skip" or "don't know", and that answers should be aggregates, categories and roles, never secrets, credentials, recovery codes, names, emails, raw IDs, URLs or screenshots.
 4. Ask only the person already in the conversation. Do not contact other Owners, send DMs, emails or test notifications, or ask the user to fetch another Owner's personal metadata.

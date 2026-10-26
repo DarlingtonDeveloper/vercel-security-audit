@@ -32,10 +32,28 @@ class InlineOwnerRoundTests(unittest.TestCase):
         for clause in ("one batched round", "still needs_confirmation", "owner statement could resolve",
                        "Owner confirmation question groups", '"skip" or "don\'t know"', "Do not run follow-up rounds"):
             self.assertIn(clause, self.step4)
-        for clause in ("one batched message", "grouped by domain", "still needs_confirmation",
+        for clause in ("one batched message", "grouped by domain",
+                       "needs_confirmation checks whose missing fact an owner statement could resolve",
                        "safe per-check questions", "Owner confirmation question groups",
                        '"skip" or "don\'t know"', "Do not ask follow-up rounds"):
             self.assertIn(clause, self.round)
+
+    def test_unavailable_not_reviewed_checks_are_included_but_unauthorised_are_not(self):
+        for text in (self.step4, self.round):
+            for clause in ("not_reviewed checks whose collection was unavailable",
+                           "no acceptable pre-exposure selection mechanism",
+                           "unauthorised (including declined or unauthorised optional checks)" if text is self.step4
+                           else "unauthorised, including declined or unauthorised optional checks",
+                           "out of scope", "never use the round to expand scope"):
+                self.assertIn(clause.lower(), text.lower())
+        self.assertIn("when a safe per-check question exists for that check in the list above", self.round)
+        self.assertIn("no per-check questions for the optional checks", self.round)
+        policy = section((SKILL / "references/evidence-assessment.md").read_text(),
+                         "## Owner statements from the inline round", "\n## ")
+        for clause in ("still only an owner statement", "keep the observed setting unknown",
+                       "Keep the collection gap and its reason recorded", "leaves the check not_reviewed",
+                       "unauthorised or out of scope are never asked"):
+            self.assertIn(clause, policy)
 
     def test_answers_are_labelled_statements_without_broader_access(self):
         for clause in ("timestamped owner statement", "separately from observed evidence",
