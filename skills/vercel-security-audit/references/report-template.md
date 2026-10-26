@@ -163,6 +163,15 @@ JSON is optional; readable Markdown evidence is sufficient. This synthetic examp
 }
 ```
 
+## Private alias legend (optional)
+
+Synthetic aliases stay mandatory in the report itself. When the report is for the account owner alone, they may ask for a private legend that maps aliases back to resources so they can act on findings. Offer it only on request or when the audience is just the owner, and record their choice.
+
+- Keep the legend in a separate file in the same private output location, for example `alias-legend.txt`. Never embed it in the Markdown, JSON model, HTML or PDF, and never pass it to the renderer or QA script.
+- Map only team, project, environment and domain aliases to resource names already returned by authorised inventory reads. Never include people (member names, emails, handles, role holders), credentials, URLs with tokens, environment values or anything collected outside the agreed scope.
+- Start the file with: "Private alias legend. Do not share, attach or publish. Shared copies of the report must not include this file."
+- Tell the user where it is and that any shared or forwarded version of the report must leave it out. Write it only to a new file; never overwrite an existing one.
+
 ## Deliverable format
 
 Markdown is mandatory and remains the source deliverable. Styled HTML uses the bundled community template when Python 3 is available; read [report design](report-design.md) before rendering. PDF is optional, exported from that same HTML through an already-installed browser or renderer. Do not use a renderer that adds official Vercel branding or fetches remote assets. If rendering is unavailable, deliver Markdown without installing tools. Review all rendered pages for redaction and layout. An export is not permission to publish or send.
