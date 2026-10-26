@@ -97,6 +97,9 @@ Construct URLs only from team/project slugs already verified by inventory. Prefe
 - Team Domains: /~/domains.
 - Project Firewall overview: /{project_slug}/firewall.
 - Project Firewall rules: /{project_slug}/firewall/rules.
+- Drains (SEC-03, OPS-02): use observed team Settings navigation; drains have appeared in the settings sidebar. Destination URLs and headers can carry credentials, so select destination type, enabled state and scope only.
+- Alerts (OPS-01): use observed team Settings navigation. Select subscription state and destination type, never recipient addresses or webhook URLs.
+- Notifications (OPS-01): use observed team Settings navigation. Notification preferences can be per user; record whose view it is as a role alias and do not treat one person's preferences as team coverage.
 - Firewall traffic, audit history, notification settings, integrations and Git controls: follow actual navigation and verify the destination before reading.
 
 Read the [UI-state playbook](browser-evidence.md#ui-state-playbook) before interpreting controls. Use safely available live switch/input semantics such as aria-checked or checked without toggling; color alone is not proof. Candidate text such as Configure, Save, Require Separate Values or Owner count is balanced is not itself an enabled state or exact count and is not a claim about current official UI names. Role icons/+N do not enumerate scope. Bound readiness waits to verified host capabilities; at most one safe reload requires no form change and a passing privacy gate. Persistent Loading needs_confirmation; a missing control or 404 is not disabled. Follow the observed Rules view, not a guessed configuration route.
