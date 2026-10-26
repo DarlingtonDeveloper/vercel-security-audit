@@ -43,6 +43,28 @@ A token inherits its user's role and scope; the token's presence is not proof of
 
 Do not automatically run login, switch, link, pull, setup or installation commands. Normal user-completed authentication is separate from collecting evidence. Prefer explicit scope and project flags to relinking the user's workspace. Never invoke bare vercel: its default command is deploy.
 
+## What counts as field selection before exposure
+
+"Host-enforced field selection before exposure" (also called the pre-exposure or pre-model gate) means: the fields are chosen by a mechanism fixed before the read runs, and nothing outside those fields can reach the model, transcript, tool logs, screenshots or disk. In CLI-based agent hosts every command's output reaches the model, so the selection has to happen inside the command that produces it. Only these mechanisms count:
+
+1. CLI: the bundled reader, `scripts/cli_read.py`. Its allow-lists are fixed in the skill and tested; the raw output never leaves its process.
+2. MCP: a connector tool whose verified response contract is metadata-only, per the [MCP metadata boundary](mcp-boundary.md).
+3. Browser: a script evaluated in the page that returns only named fields of named controls (switch or checkbox state, a count, an enum-like label), and only on a host verified to take no automatic screenshot, snapshot or accessibility-tree capture on navigation, load, reload or tool completion. Write the selector before navigating, return booleans, numbers and short labels only, and record the selector's purpose in the evidence.
+
+These do not count, even if the result looks clean:
+
+- An ad-hoc filter written during the audit, such as `vercel security check --json | jq '...'` or a one-off Python pipe. It has not been reviewed or tested, a typo exposes everything, and widening an allow-list belongs in the bundled reader with tests.
+- Filtering, cropping, blurring or summarising after the output, page text or image has already reached the model, transcript, a tool log or a file. Saving raw output to a file and reading part of it is the same.
+- A page script on a host that captures the page automatically, or one that returns container text such as `document.body.innerText`, table rows, member lists, names, emails or URLs.
+- Instructions to the model to ignore or not repeat what it saw.
+
+Worked examples:
+
+- Acceptable CLI read: `python3 -I -B "$skill_dir/scripts/cli_read.py" security-check --scope "$team_slug"`. Not acceptable: `vercel security check`, `vercel security check --json`, or either piped through your own filter.
+- Acceptable browser read, on a host verified not to auto-capture: a script that finds the agreed control by its accessible name and returns `{"control": "<agreed label>", "ariaChecked": "true"}`. Not acceptable: returning the Members table, the page's text content or a screenshot of an environment variables page.
+
+If no acceptable mechanism exists for a check, that does not automatically make it not_reviewed: use a safe owner statement where one exists (see [browser evidence](browser-evidence.md)), otherwise record not_reviewed with the reason. Record which mechanism was used for each piece of evidence.
+
 ## CLI account reads: bundled reader only
 
 Every CLI account read goes through the bundled reader, `scripts/cli_read.py` in the installed skill directory. It runs one documented read command as an argument list (no shell), always adds `--json` and `--non-interactive`, keeps the raw output inside its own process and prints only that read's allow-listed fields as JSON. CLI error text is never echoed; failures are reported as fixed kinds such as `permission`, `not_authenticated`, `unknown_command`, `timeout` or `invalid_json`, always with `coverage.complete: false`.
