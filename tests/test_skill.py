@@ -97,7 +97,7 @@ class PublicSkillTests(unittest.TestCase):
             "whoami", "teams list", "security check", "project ls", "firewall status",
             "firewall overview", "firewall rules list", "firewall system-bypass list",
             "firewall bot-management", "firewall traffic list", "firewall alerts list",
-            "activity", "webhooks list", "integration list",
+            "activity", "webhooks list", "integration list", "domains list",
         )
         commands = re.findall(r"^vercel (.+)$", text, re.M)
         self.assertGreaterEqual(len(commands), 12)
