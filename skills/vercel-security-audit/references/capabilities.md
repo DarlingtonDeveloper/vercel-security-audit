@@ -58,6 +58,7 @@ vercel firewall alerts list --scope "$team_slug" --project "$project_id" --since
 vercel activity --scope "$team_slug" --all --since 7d --limit 100 --json
 vercel webhooks list --scope "$team_slug" --json
 vercel integration list --scope "$team_slug" --all --json
+vercel domains list --scope "$team_slug" --limit 100 --json
 ```
 
 Important distinctions:
@@ -70,6 +71,9 @@ Important distinctions:
 - Alert history and alert subscriptions are different. Verify recipients/subscriptions in the browser or a documented read tool.
 - Marketplace resource listings do not establish the complete inventory of Git applications, deploy hooks or other third-party access.
 - Activity payloads, webhook destination URLs and integration configurations can contain sensitive material. Keep only necessary event types, aggregate counts and verified configuration flags. A missing event is not proof an action never happened.
+- domains list is team-wide domain inventory and requires explicit team-wide read authorisation. Its JSON fields were not verified against an account for this guide: inspect the response shape without values first, then select only verification/configuration state fields it actually returns and counts before exposure, and replace domain names with synthetic aliases in that same selection step; hostnames can be sensitive. Follow its verified --next pagination; a page of 20 or 100 is not the whole inventory. Project association, certificate detail and warnings beyond the selected fields stay with the browser or owner routes.
+- Certificate listing: certs list in the checked version has no JSON output option, so its table cannot be allow-listed before exposure. Treat it as unsupported unless the installed help documents a structured output that can be selected before exposure.
+- Environment variables: do not run env list/ls. In the checked version its JSON output includes readable environment variable values, so selecting fields afterwards still fetches secrets. Agent hosts may switch plain commands to JSON automatically. SEC-01 stays with the connector, browser or owner routes.
 - Runtime version settings and recent deploy dates do not establish deployed dependency versions, application authentication or whether a site is still used.
 
 ## Pagination and bounded collection

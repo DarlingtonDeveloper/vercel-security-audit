@@ -108,7 +108,7 @@ Browser entries are fallbacks, not permission to expose sensitive pages. Apply t
 
 ### SEC-01
 - MCP: Conditional environment targeting metadata only if verified schema and response contract exclude values before model exposure; a decrypt=false argument alone is insufficient proof.
-- CLI: Unsupported for a proven metadata-only environment read in the existing patterns; never pull values.
+- CLI: Unsupported for a proven metadata-only environment read; env list output includes readable values in the checked version, so never run it or pull values.
 - Security Dashboard: Partial/no equivalent verified; no observed check name.
 - Browser: Pre-selected environment targeting/protection metadata only; no reveal controls or environment values.
 
@@ -126,19 +126,19 @@ Browser entries are fallbacks, not permission to expose sensitive pages. Apply t
 
 ### DOM-01
 - MCP: Conditional domain association metadata; schema must restrict project scope and select aliased association/verification state without DNS credential data.
-- CLI: Unsupported for domain association metadata in the existing patterns.
+- CLI: domains list provides team domain inventory and only the verification fields its JSON actually returns, subject to team-wide authorisation, pre-exposure selection with synthetic aliases and verified pagination; project association needs another route.
 - Security Dashboard: Partial/no equivalent verified; no observed check name.
 - Browser: Project/team domain association and verification status; owner confirms control.
 
 ### DOM-02
 - MCP: Conditional certificate status metadata; schema must select covered scope, status and expiry without private keys or active probes.
-- CLI: Unsupported for certificate metadata in the existing patterns.
+- CLI: Unsupported for certificate metadata: certs list has no structured output to select before exposure in the checked version.
 - Security Dashboard: Partial/no equivalent verified; no observed check name.
 - Browser: Displayed domain certificate/transport status only; no TLS scanning.
 
 ### DOM-03
 - MCP: Conditional domain warning/configuration metadata; schema must select safe warning summaries and alias relationships within scope.
-- CLI: Unsupported for domain warning/configuration reads in the existing patterns.
+- CLI: domains list supplies only the per-domain configuration fields its JSON actually returns, subject to team-wide authorisation and pre-exposure selection; warnings and alias/redirect relationships need another route.
 - Security Dashboard: Partial/no equivalent verified; no observed check name.
 - Browser: Domain warnings and alias/redirect settings; owner confirms lifecycle responsibility.
 
