@@ -9,6 +9,9 @@ from pathlib import Path
 import re
 import sys
 
+# Resolve the sibling renderer from this file, not sys.path[0], so the helper
+# also works under python -I (which does not add the script directory).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from render_report import safe_link
 
 SKILL = Path(__file__).resolve().parents[1]

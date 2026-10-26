@@ -16,6 +16,9 @@ import tempfile
 
 # Importing the renderer must not create or replace cache files in the skill.
 sys.dont_write_bytecode = True
+# Resolve the sibling renderer from this file, not sys.path[0], so the helper
+# also works under python -I (which does not add the script directory).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from render_report import MAX_BYTES, STATUSES, render_report
 
 CORE_IDS = tuple(f"{domain}-{index:02}" for domain in
