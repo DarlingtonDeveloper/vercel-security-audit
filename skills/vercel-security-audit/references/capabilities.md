@@ -143,7 +143,7 @@ Missing or mistyped fields are reported as `unknown`, never zero or false. Shape
 Important distinctions:
 
 - security check reports product check statuses, risk, violation counts and muted findings. --findings and --limit control individual findings; use only when necessary. Exact total counts do not mean all individual findings were inspected. A successful exit code means the report was produced, not that checks passed. Map failing to an evidence-backed review candidate; passing applies only to that product check and its explicit scope. Muted means findings were suppressed or accepted, not that the underlying gap was resolved: preserve the reason and request confirmation. No access and error are unavailable evidence, never satisfactory. Inspect the actual response and pagination rather than assuming the CLI help and documentation describe the same finding cap.
-- project ls defaults to a page of 20 in the checked version. Follow returned pagination with the supported --next flag; a first page is not the whole estate.
+- project ls defaults to a page of 20 in the checked version; a first page is not the whole estate. The reader follows `pagination.next` with the supported --next flag for you (see [safe pagination](#safe-pagination-with-the-reader)).
 - firewall status is configuration; overview includes the last day's activity. traffic list has its own window and plan-dependent retention. Do not label an overview as 30-day traffic.
 - traffic list aggregates into time buckets. In a test run on CLI 65, --since 24h returned a period end one hour after the request time, consistent with hourly buckets. Record the returned period start and end as the covered window, not the requested relative window, and note that the final bucket may extend past the observation time. For an exact window, pass explicit ISO 8601 --since and --until values on hour boundaries where installed help supports them. Bucket size is not documented in the checked help; if the response does not state it, record it as unknown.
 - firewall rules list may include unpublished drafts. Separate published configuration from drafts; never publish or discard either during an audit.
@@ -157,6 +157,15 @@ Important distinctions:
 - Runtime version settings and recent deploy dates do not establish deployed dependency versions, application authentication or whether a site is still used.
 
 ## Pagination and bounded collection
+
+### Safe pagination with the reader
+
+Paginated CLI reads (`project-ls`, `team-check`, `activity`) are followed inside the bundled reader. Do not write your own shell loop. Shell loops caused false completeness in testing: on zsh an unquoted `$FLAGS` does not word-split, so the CLI rejected `--scope x --project y` as one option, and `echo "$json"` interpreted backslash escapes, corrupted the JSON, and the loop read that as end-of-list. The reader passes every flag as a separate argument, never echoes output through a shell, and applies these rules:
+
+- End of list is established only by a successfully parsed page whose `pagination.next` is explicitly null. That is `coverage.endOfList: known` and `coverage.complete: true`.
+- A parse failure, CLI error or timeout on any page, a missing or malformed cursor, a repeated cursor, or reaching the page cap (`--max-pages`, default 20, at most 50) stops the read with `ok: false`, `coverage.complete: false` and `coverage.stoppedBecause`. It is never end-of-list.
+- Pages already read are returned as `partialResult`. Use them as bounded observations with their exact scope, and record the rest as a coverage gap in the Coverage limits block, never as a negative finding about the unread pages.
+
 
 For every source/feed, including activity, deployments and observability, inspect the actual read-tool schemas, returned pagination metadata and installed help before collection. Discover supported windows, retention, page/finding caps, cursor fields and end-of-list semantics for that specific feed. Do not invent pagination flags or reuse one command's cursor mechanism for another. Follow only verified pagination within authorised scope, retaining pre-exposure redaction. Do not expand collection or bypass access/retention limits to obtain completeness.
 

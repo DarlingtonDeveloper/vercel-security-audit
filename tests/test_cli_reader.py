@@ -81,6 +81,14 @@ FIXTURES = {
     "webhooks list --scope example-team": {"stdout": "not json " + CANARY},
     "activity --scope example-team --all --since 7d --limit 100": {
         "stderr": "Error: " + CANARY + " is forbidden (403)\n"},
+    "project ls --scope page-team": {"json": dict(PROJECTS, pagination={"count": 1, "next": 111, "prev": None})},
+    "project ls --scope page-team --next 111": {"json": dict(PROJECTS, projects=[dict(PROJECTS["projects"][0], id="prj_2")])},
+    "project ls --scope corrupt-team": {"json": dict(PROJECTS, pagination={"count": 1, "next": 222, "prev": None})},
+    # What `echo "$json"` produced in #27: escapes interpreted, JSON corrupted.
+    "project ls --scope corrupt-team --next 222": {"stdout": '{"projects": [{"name": "a\\nb' + CANARY},
+    "project ls --scope loop-team": {"json": dict(PROJECTS, pagination={"count": 1, "next": 333, "prev": None})},
+    "project ls --scope loop-team --next 333": {"json": dict(PROJECTS, pagination={"count": 1, "next": 333, "prev": 1})},
+    "project ls --scope nopage-team": {"json": {"projects": PROJECTS["projects"]}},
     "security check --scope old-team": {
         "stderr": 'Error: "security" is not a valid target directory or subcommand. Did you mean "cert"?\n'},
 }
@@ -183,6 +191,29 @@ class CLIReaderTests(unittest.TestCase):
         self.assertEqual(self.ok("team-check", "--scope", "not-mine")["result"], {"member": False})
         result = self.read("team-check")
         self.assertEqual(result.returncode, 2)
+
+    def test_pagination_follows_next_until_explicit_end(self):
+        output = self.ok("project-ls", "--scope", "page-team")
+        self.assertEqual([p["id"] for p in output["result"]["projects"]], ["prj_1", "prj_2"])
+        self.assertEqual(output["coverage"], {"pages": 2, "endOfList": "known", "complete": True})
+        # Flags are separate argv elements, never one word-split string (the zsh $FLAGS pitfall).
+        self.assertIn(["project", "ls", "--scope", "page-team", "--next", "111", "--json", "--non-interactive"],
+                      self.argv_log())
+
+    def test_parse_failure_on_a_later_page_is_incomplete_not_end_of_list(self):
+        output = self.failure("project-ls", "--scope", "corrupt-team")
+        self.assertEqual(output["failure"], "invalid_json")
+        self.assertEqual(output["coverage"], {"pages": 1, "endOfList": "not_reached", "complete": False,
+                                              "stoppedBecause": "invalid_json"})
+        self.assertEqual(len(output["partialResult"]["projects"]), 1)
+
+    def test_repeated_cursor_page_cap_and_missing_pagination_are_incomplete(self):
+        self.assertEqual(self.failure("project-ls", "--scope", "loop-team")["failure"], "repeated_cursor")
+        capped = self.failure("project-ls", "--scope", "page-team", "--max-pages", "1")
+        self.assertEqual(capped["failure"], "page_cap_reached")
+        self.assertEqual(capped["coverage"]["pages"], 1)
+        self.assertEqual(self.failure("project-ls", "--scope", "nopage-team")["failure"], "invalid_cursor")
+        self.assertEqual(self.read("project-ls", "--scope", "page-team", "--max-pages", "0").returncode, 2)
 
     def test_failures_are_fixed_kinds_without_cli_text(self):
         self.assertEqual(self.failure("webhooks", *SCOPE)["failure"], "invalid_json")
