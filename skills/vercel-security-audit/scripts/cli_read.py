@@ -79,6 +79,23 @@ def select_whoami(data):
     return {"username": _get(data, "username") if isinstance(_get(data, "username"), str) else UNKNOWN}
 
 
+def product_result(violations, total):
+    """Conservative per-product-check result from the only fields the CLI returns.
+
+    violations > 0: violations_found (a review candidate, not yet a finding).
+    violations == 0 and total > 0: no_violations (this product check and scope only).
+    total == 0: nothing_evaluated. Missing or mistyped counts: unknown.
+    Muted findings cannot be detected from this output.
+    """
+    if violations == UNKNOWN:
+        return UNKNOWN
+    if violations > 0:
+        return "violations_found"
+    if total == UNKNOWN:
+        return UNKNOWN
+    return "no_violations" if total > 0 else "nothing_evaluated"
+
+
 def select_security_check(data):
     report = _get(data, "report")
     checks, withheld = {}, 0
@@ -86,14 +103,19 @@ def select_security_check(data):
         if not CHECK_KEY.fullmatch(key):
             withheld += 1
             continue
+        violations, total = _int(_get(value, "violationsCount")), _int(_get(value, "totalCount"))
+        if violations != UNKNOWN and violations < 0 or total != UNKNOWN and total < 0:
+            violations = total = UNKNOWN
         checks[key] = {
-            "violationsCount": _int(_get(value, "violationsCount")),
-            "totalCount": _int(_get(value, "totalCount")),
+            "productResult": product_result(violations, total),
+            "violationsCount": violations,
+            "totalCount": total,
             "sampleType": [item for item in _list(_get(value, "sampleType")) if isinstance(item, str) and SAMPLE_TYPE.fullmatch(item)],
             # Samples name projects, deployments and environment variables: count only.
             "samplesReceived": _count(_get(value, "samples")),
         }
-    return {"checks": checks, "withheldCheckKeys": withheld, "reportPresent": isinstance(report, dict)}
+    return {"checks": checks, "withheldCheckKeys": withheld, "reportPresent": isinstance(report, dict),
+            "mutedDetectable": False}
 
 
 def select_project_ls(data):
