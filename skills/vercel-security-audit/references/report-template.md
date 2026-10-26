@@ -18,7 +18,7 @@ This is a point-in-time configuration review. It is not a penetration test, secu
 
 ## Initial priorities
 
-List at most three evidence-backed priorities, ordered by owner-relevant impact and confidence. Use fewer when evidence supports fewer. Do not promote unknowns to confirmed vulnerabilities.
+List at most three evidence-backed priorities, ordered by owner-relevant impact and confidence. Use fewer when evidence supports fewer. Do not promote unknowns to confirmed vulnerabilities. Leave out owner-accepted settings; list them under Deliberate or owner-accepted settings.
 
 1. [Short action or confirmation request; topic ID; benefit; responsible role].
 2. [Optional second priority; delete if unnecessary].
@@ -38,7 +38,7 @@ List at most three evidence-backed priorities, ordered by owner-relevant impact 
 - Missing evidence: [topic ID, unavailable field/view, access or plan limit, and exact question remaining].
 - Conflicting or stale evidence: [topic ID, conflicting observations/times, and what would resolve the difference].
 - Owner statements: [process/ownership claims distinguished from observed configuration; inline owner round run with UTC time, or skipped with reason (for example noninteractive host or owner not present)].
-- Source/application review: [not authorized, not reviewed, or explicitly authorized materials and coverage].
+- Source/application review: [not authorized, not reviewed, or explicitly authorized materials and coverage; config-intent read of named deployment configuration files agreed with provenance and UTC time, not agreed, or not available].
 - Observed plan: [plan label, scope alias, source and observation date; unknown if unavailable].
 - Verified current per-feature entitlements: [feature, effective scope, account-specific/custom features or add-ons, role visibility, current public documentation and verification date, account facts and date; otherwise verification pending].
 - Applicability decisions: [feature/subfeature, verified rationale and evidence; a 403, upgrade prompt or plan label alone does not establish not_applicable, but a structured plan entitlement field from a verified read can when current documentation agrees (see evidence assessment); mixed-check unresolved settings remain visible].
@@ -79,7 +79,7 @@ A count of 100 is not completeness. No cursor without a verified end, truncation
 
 ## Recommendations
 
-Repeat the following block for each supported recommendation. Keep the initial priorities list limited to three even if this section has more items. Label confirmation tasks as confirmation, not proven weaknesses. The reviewing agent remains read-only; implementation needs separate owner authorization.
+Repeat the following block for each supported recommendation. Keep the initial priorities list limited to three even if this section has more items. Label confirmation tasks as confirmation, not proven weaknesses. Do not write a recommendation for an owner-accepted setting. The reviewing agent remains read-only; implementation needs separate owner authorization.
 
 ### [Recommendation number] - [outcome-focused title]
 
@@ -108,6 +108,12 @@ Verify documentation against current public sources before sharing instructions.
 - Deferred checks: [topic IDs and explicit reason for deferral].
 - Suggested recheck: [owner-chosen trigger or date, without implying automatic monitoring].
 - Completion boundary: [all 24 core statuses recorded, optional scope recorded separately, limitations visible, evidence redacted, and recommendations tied to evidence].
+
+### Deliberate or owner-accepted settings
+
+List settings the owner has confirmed as deliberate, with a reason. They stay needs_confirmation, are not initial priorities or recommendations, and remain in the appendix with the acceptance in their rationale. Source-code evidence of intent alone does not belong here; keep it as a confirmation request. If there are none, write "No owner-accepted settings recorded."
+
+- [Topic ID]: [setting summary and scope alias]. Owner reason: [sanitised reason]. Owner statement: [role alias and UTC statement time]. Codebase intent: [source_review evidence reference, or not checked and why]. Recheck: [owner-chosen trigger, or none given].
 
 ### Owner confirmation questionnaire
 

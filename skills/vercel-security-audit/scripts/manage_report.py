@@ -328,7 +328,7 @@ def validate_report(report):
         _text(scope[key])
     decisions = _validate_consent(scope["optional_consent"])
     summary = report["review_summary"]
-    _object(summary, SUMMARY_TEXT + ("confirmed_strengths", "initial_priorities"))
+    _object(summary, SUMMARY_TEXT + ("confirmed_strengths", "initial_priorities"), ("owner_accepted",))
     for key in SUMMARY_TEXT:
         _text(summary[key])
     _texts(summary["confirmed_strengths"])
@@ -387,6 +387,28 @@ def validate_report(report):
         _require(len(ids) == len(set(ids)) and set(ids) <= set(CHECK_IDS), "Invalid related check IDs.")
         _texts(recommendation["prerequisites"], minimum=1)
         _texts(recommendation["steps"], minimum=1)
+    _validate_accepted(summary.get("owner_accepted", []), {check["id"]: check for check in checks},
+                       evidence_by_id, recommendations)
+
+
+def _validate_accepted(records, checks, evidence_by_id, recommendations):
+    """Owner-accepted settings keep needs_confirmation and leave the action list."""
+    _require(type(records) is list and len(records) <= 28, "Invalid owner-accepted settings.")
+    seen = set()
+    recommended = {identifier for item in recommendations for identifier in item["check_ids"]}
+    for record in records:
+        _object(record, ("check_id", "evidence_ref"))
+        _text(record["check_id"], 6)
+        _require(record["check_id"] in CHECK_IDS and record["check_id"] not in seen,
+                 "Unknown or duplicate owner-accepted check.")
+        seen.add(record["check_id"])
+        _identifier(record["evidence_ref"])
+        _require(checks[record["check_id"]]["status"] == "needs_confirmation",
+                 "Owner-accepted settings must stay needs_confirmation.")
+        owner, entry = evidence_by_id.get(record["evidence_ref"], (None, None))
+        _require(owner == record["check_id"] and entry["source_kind"] == "owner_statement",
+                 "Owner acceptance needs an owner statement on the same check.")
+        _require(record["check_id"] not in recommended, "Owner-accepted checks cannot have recommendations.")
 
 
 def new_report(scope_alias, title):
@@ -528,6 +550,21 @@ def _coverage_lines(records):
                     "or successful bounded retry alone does not establish the absence of events or resources.", ""]
 
 
+def _accepted_lines(records, checks):
+    lines = ["", "### Deliberate or owner-accepted settings", "",
+             "The owner gave a reason for keeping these settings. They stay needs_confirmation, are not initial "
+             "priorities or recommendations, and remain in the appendix. Source-code evidence of intent alone "
+             "is not owner acceptance.", ""]
+    if not records:
+        return lines + ["No owner-accepted settings recorded."]
+    for record in records:
+        entry = next(item for item in checks[record["check_id"]]["evidence_log"] if item["id"] == record["evidence_ref"])
+        lines.append(f"- {record['check_id']} - {CHECK_TITLES[record['check_id']]}: status "
+                     f"{checks[record['check_id']]['status']}. Owner reason ({entry['source_kind']}, {entry['id']}; "
+                     f"Statement UTC: {entry['observed_at']}; Scope alias: {entry['scope_alias']}): {entry['observed']}")
+    return lines
+
+
 def _questionnaire_lines(records):
     lines = ["", "### Owner confirmation questionnaire", "",
              "Owner replies are self-statements, not observed configuration. Source: owner_statement. "
@@ -597,6 +634,7 @@ def build_markdown(report):
     lines += ["## Follow-up and completion", ""]
     lines += [f"- {label}: {report['follow_up'][key]}" for key, label in zip(
         FOLLOW_UP_TEXT, ("Owner decisions needed", "Deferred checks", "Suggested recheck"))]
+    lines += _accepted_lines(summary.get("owner_accepted", []), checks)
     lines += _questionnaire_lines(report["owner_confirmations"])
     for identifiers, heading in ((CORE_IDS, "Appendix: required core checks"),
                                  (OPTIONAL_IDS, "Appendix: optional checks, excluded from core coverage")):
