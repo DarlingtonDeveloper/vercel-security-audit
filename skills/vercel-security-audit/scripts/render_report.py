@@ -98,6 +98,54 @@ def text_line(text):
     return inline(text)
 
 
+MAX_TABLE_COLUMNS = 16
+TABLE_ROW = re.compile(r"\|.*\|")
+TABLE_SEPARATOR = re.compile(r"\|(?:[ \t]*:?-{3,}:?[ \t]*\|)+")
+
+
+def table_cells(row):
+    """Split a pipe row on unescaped pipes; a backslash-escaped pipe is literal."""
+    cells, current, index = [], [], 1
+    while index < len(row) - 1:
+        if row[index] == "\\" and row[index + 1] == "|" and index + 1 < len(row) - 1:
+            current.append("|")
+            index += 2
+            continue
+        if row[index] == "|":
+            cells.append("".join(current).strip())
+            current = []
+        else:
+            current.append(row[index])
+        index += 1
+    cells.append("".join(current).strip())
+    return cells
+
+
+def table_cell(text):
+    """Inline Markdown only; a cell holding exactly one status key becomes its badge."""
+    if text in STATUSES:
+        label, css = STATUSES[text]
+        return '<span class="status-badge status-' + css + '">' + label + "</span>"
+    return text_line(text) if text else ""
+
+
+def render_table(header, rows):
+    columns = len(header)
+    if columns > MAX_TABLE_COLUMNS:
+        raise ReportError("Tables may have at most 16 columns.")
+    if not rows:
+        raise ReportError("Tables need at least one body row.")
+    if any(len(row) != columns for row in rows):
+        raise ReportError("Each table row needs the same number of cells as its header.")
+    parts = ['<div class="table-wrap"><table><thead><tr>']
+    parts += ['<th scope="col">' + inline(cell) + "</th>" for cell in header]
+    parts.append("</tr></thead><tbody>")
+    for row in rows:
+        parts.append("<tr>" + "".join("<td>" + table_cell(cell) + "</td>" for cell in row) + "</tr>")
+    parts.append("</tbody></table></div>")
+    return "".join(parts)
+
+
 def markdown_body(source):
     """Small documented Markdown subset, escaped by construction; no raw HTML."""
     lines = source.splitlines()
@@ -110,11 +158,18 @@ def markdown_body(source):
     used_identifiers = {"report-main"}
     section_open, article_open, recommendations = False, False, False
     list_kind, paragraph, fence, code = None, [], False, []
+    table, skip_separator = None, False
 
     def flush_paragraph():
         if paragraph:
             output.append("<p>" + "<br>".join(text_line(line.strip()) for line in paragraph) + "</p>")
             paragraph.clear()
+
+    def close_table():
+        nonlocal table
+        if table is not None:
+            output.append(render_table(table[0], table[1:]))
+            table = None
 
     def close_list():
         nonlocal list_kind
@@ -139,8 +194,28 @@ def markdown_body(source):
         used_identifiers.add(candidate)
         return candidate
 
-    for line in lines[1:]:
+    for position, line in enumerate(lines[1:], 1):
         stripped = line.strip()
+        if skip_separator:
+            skip_separator = False
+            continue
+        if table is not None:
+            if stripped.startswith("|"):
+                if not TABLE_ROW.fullmatch(stripped):
+                    raise ReportError("Table rows must start and end with a pipe.")
+                table.append(table_cells(stripped))
+                continue
+            close_table()
+        if not fence and TABLE_ROW.fullmatch(stripped):
+            following = lines[position + 1].strip() if position + 1 < len(lines) else ""
+            if TABLE_SEPARATOR.fullmatch(following):
+                flush_paragraph()
+                close_list()
+                header = table_cells(stripped)
+                if len(header) != following.count("|") - 1:
+                    raise ReportError("A table separator needs one cell per header cell.")
+                table, skip_separator = [header], True
+                continue
         if re.fullmatch(r"```[a-zA-Z0-9_+-]*", stripped):
             flush_paragraph()
             close_list()
@@ -208,6 +283,7 @@ def markdown_body(source):
             paragraph.append(line)
     if fence:
         raise ReportError("Close all fenced code blocks before rendering.")
+    close_table()
     flush_paragraph()
     close_list()
     close_article()

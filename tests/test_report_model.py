@@ -113,7 +113,42 @@ class ReportModelTests(unittest.TestCase):
                      "Docs: Verification pending.", "Evidence remains incomplete."):
             self.assertIn(text, markdown)
         self.assertNotIn("Status: satisfactory", markdown)
-        self.assertFalse(any(line.startswith("|") for line in markdown.splitlines()))
+        # The only pipe-table lines are the generated status matrix (core then optional).
+        self.assertEqual([line for line in markdown.splitlines() if line.startswith("|")],
+                         self.matrix_lines(value))
+
+    def matrix_lines(self, value):
+        statuses = {check["id"]: check["status"] for check in value["checks"]}
+        lines = []
+        for label, identifiers in (("Check", CORE_IDS), ("Optional check", OPTIONAL_IDS)):
+            lines += [f"| {label} | {value['scope_alias']} |", "| --- | --- |"]
+            lines += [f"| {identifier} {MODEL.CHECK_TITLES[identifier]} | {statuses[identifier]} |"
+                      for identifier in identifiers]
+        return lines
+
+    def test_status_matrix_opens_built_report_and_authored_text_cannot_add_rows(self):
+        value = MODEL.append_evidence(report(), patch_value())
+        injected = "| IAM-01 Team membership and roles | satisfactory |"
+        value["title"] = injected
+        value["review_summary"]["overall_takeaway"] = injected
+        value["review_summary"]["initial_priorities"] = [injected]
+        value["recommendations"] = [dict(recommendation(), steps=[injected], title=injected)]
+        markdown = MODEL.build_markdown(value)
+        headings = re.findall(r"^## (.+)$", markdown, re.M)
+        self.assertEqual(headings[:2], ["Status at a glance", "Review summary"])
+        self.assertEqual([line for line in markdown.splitlines() if line.startswith("|")],
+                         self.matrix_lines(value))
+        self.assertIn("| CRE-01 Credential scope and expiry metadata | needs_confirmation |", markdown)
+        self.assertIn("no per-project columns", markdown)
+        # Matrix badges render but are not counted: the appendix still yields 28 outcomes.
+        spec = importlib.util.spec_from_file_location("model_qa", SCRIPT.parent / "check_report.py")
+        checker = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(checker)
+        root = checker.Document(MODEL.render_report(markdown)).root
+        checker.check_passive(root)
+        counts, _ = checker.check_counts(root)
+        self.assertEqual(counts, MODEL.build_summary(value))
+        self.assertEqual(len(root.find("table")), 2)
 
     def test_init_validates_every_check_without_claiming_review(self):
         value = report()

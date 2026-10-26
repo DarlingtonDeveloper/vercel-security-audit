@@ -113,11 +113,11 @@ def read_json(path):
 
 def check_passive(root):
     """Conservative generated dialect, not a general HTML/CSS security validator."""
-    tags = set("html head meta title style body div header p span h1 h2 h3 h4 h5 h6 aside main ul ol li a section article blockquote pre code strong em hr br footer details summary".split())
+    tags = set("html head meta title style body div header p span h1 h2 h3 h4 h5 h6 aside main ul ol li a section article blockquote pre code strong em hr br footer details summary table thead tbody tr th td".split())
     attributes = {
         "html": {"lang"}, "meta": {"charset", "name", "content", "http-equiv"},
         "a": {"href", "rel"}, "aside": {"aria-label"}, "div": {"aria-hidden"},
-        "li": {"value"},
+        "li": {"value"}, "th": {"scope"},
     }
     nodes = root.find()
     for node in nodes:
@@ -147,6 +147,7 @@ def check_passive(root):
             or any(n.tag in {"meta", "title", "style", "head", "html"} for n in body.find())
             or len(body.find("main")) != 1):
         raise ReportError("Unexpected document landmark nesting.")
+    check_tables(root)
     identifiers = [n.attrs["id"] for n in nodes if "id" in n.attrs]
     if len(identifiers) != len(set(identifiers)):
         raise ReportError("Duplicate HTML ID.")
@@ -201,6 +202,58 @@ def check_passive(root):
             raise ReportError("Required community/unofficial disclaimer is missing.")
 
 
+def elements(node):
+    """Element children only; whitespace between generated tags is ignored."""
+    if any(isinstance(child, str) and child.strip() for child in node.children):
+        raise ReportError("Table structure contains unexpected text outside its cells.")
+    return [child for child in node.children if isinstance(child, Node)]
+
+
+def check_tables(root):
+    """Only the renderer's pipe-table shape: wrapped, one header row, equal widths."""
+    wrapped = []
+    containers = root.find("main") + root.find("section") + root.find("article")
+    for wrapper in root.find("div", "table-wrap"):
+        if not any(wrapper in container.children for container in containers):
+            raise ReportError("Tables must sit directly in the report body, a section or a recommendation.")
+        if wrapper.attrs != {"class": "table-wrap"} or [n.tag for n in elements(wrapper)] != ["table"]:
+            raise ReportError("Each table needs exactly one generated table-wrap container.")
+        table, = elements(wrapper)
+        if table.attrs or [n.tag for n in elements(table)] != ["thead", "tbody"]:
+            raise ReportError("Tables need exactly one header group followed by one body group.")
+        head, body = elements(table)
+        header_rows, body_rows = elements(head), elements(body)
+        if head.attrs or body.attrs or len(header_rows) != 1 or not body_rows:
+            raise ReportError("Tables need one header row and at least one body row.")
+        width = None
+        for row, cell_tag in [(header_rows[0], "th")] + [(row, "td") for row in body_rows]:
+            cells = elements(row)
+            if row.tag != "tr" or row.attrs or not cells or any(cell.tag != cell_tag for cell in cells):
+                raise ReportError("Table header rows need only column headers and body rows only data cells.")
+            if any(cell.attrs != ({"scope": "col"} if cell_tag == "th" else {}) for cell in cells):
+                raise ReportError("Table cells have attributes outside the generated dialect.")
+            if width is not None and len(cells) != width:
+                raise ReportError("Table rows have inconsistent column counts.")
+            width = len(cells)
+        wrapped += [table, head, body] + header_rows + body_rows
+        wrapped += [cell for row in header_rows + body_rows for cell in elements(row)]
+    expected = {id(node) for node in wrapped}
+    if any(id(node) not in expected for tag in ("table", "thead", "tbody", "tr", "th", "td")
+           for node in root.find(tag)):
+        raise ReportError("Table elements appear outside the generated table shape.")
+
+
+def outcome_badges(node):
+    """Status badges outside tables; status-matrix cells are never appendix outcomes."""
+    found = []
+    for child in node.children:
+        if isinstance(child, Node) and child.tag != "table":
+            if "status-badge" in child.attrs.get("class", "").split():
+                found.append(child)
+            found += outcome_badges(child)
+    return found
+
+
 def check_counts(root):
     checklist = (SKILL / "references" / "checklist.md").read_text(encoding="utf-8")
     core_text, optional_text = checklist.split("## Optional deeper", 1)
@@ -234,8 +287,10 @@ def check_counts(root):
                 if not match:
                     raise ReportError("Appendix check headings must begin with a topic ID and title.")
                 current, badges = match.group(1), []
+            if child.tag == "table":
+                continue
             found = ([child] if "status-badge" in child.attrs.get("class", "").split() else [])
-            found += child.find(cls="status-badge")
+            found += outcome_badges(child)
             if found and current is None:
                 raise ReportError("Appendix status lacks a check heading.")
             badges.extend(node.text.strip() for node in found)

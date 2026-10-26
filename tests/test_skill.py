@@ -134,11 +134,31 @@ class PublicSkillTests(unittest.TestCase):
         self.assertEqual(len(re.findall(r"^## \d+\.", text, re.M)), 13)
         self.assertEqual(text.count("Pass:"), 13)
 
-    def test_no_tables_or_unbalanced_fences(self):
+    def test_tables_use_only_the_bounded_renderer_grammar_and_fences_balance(self):
+        # Pipe tables are supported (status matrix); every pipe line must belong to a
+        # header + separator + rows block with consistent widths, so nothing that
+        # looks like a table silently renders as paragraph text.
+        separator = re.compile(r"\|(?:[ \t]*:?-{3,}:?[ \t]*\|)+")
         for file in ROOT.rglob("*.md"):
-            text = file.read_text()
-            self.assertFalse(any(line.startswith("|") for line in text.splitlines()), str(file))
-            self.assertEqual(sum(line.startswith("```") for line in text.splitlines()) % 2, 0, str(file))
+            lines = file.read_text().splitlines()
+            self.assertEqual(sum(line.startswith("```") for line in lines) % 2, 0, str(file))
+            fenced, block, blocks = False, [], []
+            for line in lines + [""]:
+                if line.startswith("```"):
+                    fenced = not fenced
+                if not fenced and line.startswith("|"):
+                    block.append(line)
+                    continue
+                if block:
+                    blocks.append(block)
+                    block = []
+            for block in blocks:
+                with self.subTest(file=file.name, header=block[0][:40]):
+                    self.assertGreaterEqual(len(block), 3)
+                    self.assertRegex(block[1], separator)
+                    widths = {len(re.split(r"(?<!\\)\|", row.strip())) for row in block}
+                    self.assertTrue(all(row.rstrip().endswith("|") for row in block))
+                    self.assertEqual(len(widths), 1)
 
 
 if __name__ == "__main__":

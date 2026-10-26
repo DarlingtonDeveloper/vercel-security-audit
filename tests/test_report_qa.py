@@ -31,13 +31,23 @@ SUMMARY = {
 }
 
 
-def fixture():
-    source = "# Synthetic QA review\n\n## Summary\n[Docs](https://example.test/docs)\n"
+MATRIX = ("| Check | Team | `example-site` |\n| --- | --- | --- |\n"
+          "| IAM-01 | satisfactory | Team-wide |\n| DEP-01 | By project | action_recommended |\n"
+          "| OPS-01 | Status: not_applicable | not_reviewed |\n")
+
+
+def fixture(matrix=False, appendix_matrix=False):
+    source = "# Synthetic QA review\n\n"
+    if matrix:
+        source += "## Status at a glance\n\n" + MATRIX + "\n"
+    source += "## Summary\n[Docs](https://example.test/docs)\n"
     # A recommendation badge is not an appendix outcome.
     source += "\n## Recommendations\n### Confirm ownership\nStatus: needs_confirmation\n"
     source += "\n## Appendix: check outcomes\n"
     for index, topic in enumerate(CORE):
         source += f"\n### {topic} - Synthetic check\nStatus: {STATES[index % 5]}\n\nRationale: synthetic.\n"
+        if appendix_matrix and topic == "IAM-02":
+            source += "\n" + MATRIX
     source += "\n## Appendix: optional checks\n"
     for topic in OPTIONAL:
         source += f"\n### {topic} - Optional check\nStatus: not_reviewed\n\nRationale: not authorized.\n"
@@ -192,6 +202,56 @@ class ReportQATests(unittest.TestCase):
         result = self.check(RENDERER.render_report(source), summary=expected)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout)["counts"], expected)
+
+    def test_status_matrix_badges_are_not_counted_as_appendix_outcomes(self):
+        for placement, document in (("summary", fixture(matrix=True)),
+                                    ("summary and appendix", fixture(matrix=True, appendix_matrix=True))):
+            with self.subTest(placement=placement):
+                self.assertGreaterEqual(document.count('<td><span class="status-badge'), 4)
+                result = self.check(document)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(json.loads(result.stdout)["counts"], SUMMARY)
+
+    def test_matrix_status_cannot_stand_in_for_an_appendix_status_line(self):
+        source = "# Synthetic QA review\n\n## Appendix: check outcomes\n"
+        for index, topic in enumerate(CORE + OPTIONAL):
+            status = f"Status: {STATES[index % 5]}\n" if topic != "IAM-01" else "| Status |\n| --- |\n| satisfactory |\n"
+            source += f"\n### {topic} - Synthetic check\n{status}"
+        self.assertEqual(self.check(RENDERER.render_report(source), summary=None).returncode, 1)
+
+    def test_only_the_generated_table_shape_is_accepted(self):
+        document = fixture(matrix=True)
+        self.assertEqual(self.check(document).returncode, 0)
+        row = '<tr><td>IAM-01</td><td><span class="status-badge status-good">Satisfactory</span></td><td>Team-wide</td></tr>'
+        self.assertIn(row, document)
+        wrapper_start = '<div class="table-wrap"><table>'
+        for mutated in (
+            document.replace(row, '<tr><td>IAM-01</td><td>x</td></tr>'),
+            document.replace(row, row.replace('<td>IAM-01</td>', '<th scope="col">IAM-01</th>')),
+            document.replace(row, row.replace('<td>IAM-01</td>', '<td style="color:red">IAM-01</td>')),
+            document.replace('<th scope="col">Team</th>', '<th scope="row">Team</th>'),
+            document.replace('<th scope="col">Team</th>', '<th>Team</th>'),
+            document.replace(row, 'text' + row),
+            document.replace(wrapper_start, '<div class="table-wrap" id="matrix"><table>'),
+            document.replace(wrapper_start, '<table>').replace('</table></div>', '</table>'),
+            document.replace(wrapper_start, '<p><span><table>').replace('</table></div>', '</table></span></p>'),
+            document.replace('<table><thead>', '<table><tbody></tbody><thead>'),
+            document.replace('<tbody>', '<tbody><tr></tr>'),
+            document.replace('</tbody>', '</tbody><tbody><tr><td>a</td><td>b</td><td>c</td></tr></tbody>'),
+            document.replace('<thead><tr>', '<thead><tr><th scope="col">x</th></tr><tr>'),
+            document.replace('</td>', '</td><td><table></table></td>', 1),
+        ):
+            with self.subTest(mutated=mutated[mutated.find('table-wrap') - 20:][:160]):
+                self.assertNotEqual(mutated, document)
+                self.assertEqual(self.check(mutated).returncode, 1)
+
+    def test_table_failures_name_the_rule_without_echoing_content(self):
+        document = fixture(matrix=True)
+        row = '<tr><td>IAM-01</td><td><span class="status-badge status-good">Satisfactory</span></td><td>Team-wide</td></tr>'
+        result = self.check(document.replace(row, '<tr><td>SYNTHETIC_SECRET_CANARY</td><td>x</td></tr>'))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("Table rows have inconsistent column counts.", result.stderr)
+        self.assertNotIn("SYNTHETIC_SECRET_CANARY", result.stderr)
 
     def test_appendix_records_must_be_directly_in_main_not_nested_or_elsewhere(self):
         document = fixture()

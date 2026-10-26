@@ -2,11 +2,51 @@
 
 > Synthetic, illustrative report for layout preview only. All teams, observations and evidence are fictional; no account was audited.
 
+## Status at a glance
+
+Where each fictional check stands for the example team and its two projects. Team-wide means the check was recorded once for the whole scope; By project means see the project columns. Details for every check are in the appendix.
+
+| Check | Team | `example-site` | `example-portal` |
+| --- | --- | --- | --- |
+| IAM-01 Team members and roles | satisfactory | Team-wide | Team-wide |
+| IAM-02 Two-factor sign-in | action_recommended | Team-wide | Team-wide |
+| IAM-03 Invitations and access reviews | satisfactory | Team-wide | Team-wide |
+| CRE-01 Access token scope and expiry | needs_confirmation | Team-wide | Team-wide |
+| CRE-02 Connected app permissions | By project | satisfactory | satisfactory |
+| CRE-03 Connected app ownership | satisfactory | Team-wide | Team-wide |
+| DEP-01 Who can open deployments | By project | action_recommended | action_recommended |
+| DEP-02 Sharing review deployments | needs_confirmation | Team-wide | Team-wide |
+| DEP-03 Old deployments kept on purpose | By project | satisfactory | satisfactory |
+| FWB-01 Firewall rules match intent | By project | satisfactory | satisfactory |
+| FWB-02 Bot protection | needs_confirmation | Team-wide | Team-wide |
+| FWB-03 Firewall exceptions | not_applicable | Team-wide | Team-wide |
+| SRC-01 Connected code repositories | By project | satisfactory | satisfactory |
+| SRC-02 Who can release to production | needs_confirmation | Team-wide | Team-wide |
+| SRC-03 Builds from outside contributors | not_reviewed | Team-wide | Team-wide |
+| SEC-01 Settings kept per environment | satisfactory | Team-wide | Team-wide |
+| SEC-02 Who looks after secrets | needs_confirmation | Team-wide | Team-wide |
+| SEC-03 Log access and retention | not_reviewed | Team-wide | Team-wide |
+| DOM-01 Domains point where intended | satisfactory | Team-wide | Team-wide |
+| DOM-02 HTTPS certificates | satisfactory | Team-wide | Team-wide |
+| DOM-03 Domain warnings and upkeep | satisfactory | Team-wide | Team-wide |
+| OPS-01 Who receives incident alerts | needs_confirmation | Team-wide | Team-wide |
+| OPS-02 Reviewing past changes | not_reviewed | Team-wide | Team-wide |
+| OPS-03 Recovery planning | By project | satisfactory | satisfactory |
+
+Optional checks, kept separate from the 24 core checks:
+
+| Optional check | Team | `example-site` | `example-portal` |
+| --- | --- | --- | --- |
+| DEP-04 App sign-in boundaries | not_reviewed | Team-wide | Team-wide |
+| SRC-04 Repository rules | not_reviewed | Team-wide | Team-wide |
+| SEC-04 Secret handling in code | not_reviewed | Team-wide | Team-wide |
+| OPS-04 App recovery design | not_reviewed | Team-wide | Team-wide |
+
 ## Review summary
 
-Several safeguards meet the example team's requirements. The first improvements are two-factor sign-in and protected review deployments. Alert ownership needs confirmation.
+Most of the example team's safeguards are in good shape. Two changes would help most: turning on two-factor sign-in for everyone, and limiting who can open review deployments. We also need to confirm who receives incident alerts.
 
-- Scope: `example-team`, projects `example-site` and `example-portal`; production and review deployments.
+- Scope: the `example-team` team and its two projects, `example-site` and `example-portal`, for live and review deployments.
 - Example window: 25 October 2026, 12:00 to 12:30 UTC. This is not an actual collection timestamp.
 - Method: synthetic fixtures only. No account or application was accessed.
 - Changes made: none. The recommendations are proposed actions, not completed work.
