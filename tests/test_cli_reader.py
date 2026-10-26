@@ -44,6 +44,7 @@ SECURITY = {"report": {
     # Observed live on CLI 62.7.0: some checks omit totalCount.
     "depl-no-git-fork-protection": {"violationsCount": 0, "sampleType": ["project"], "samples": []},
     "odd-counts": {"violationsCount": -1, "totalCount": "3"},
+    "string-total": {"violationsCount": 0, "totalCount": "3"},
     CANARY + "_ODD KEY": {"violationsCount": 1},
 }}
 PROJECTS = {"contextName": CANARY, "elapsed": "1s", "pagination": {"count": 1, "next": None, "prev": 1},
@@ -160,8 +161,8 @@ class CLIReaderTests(unittest.TestCase):
         output = self.ok("security-check", *SCOPE)["result"]
         results = {key: value["productResult"] for key, value in output["checks"].items()}
         self.assertEqual(results, {"env-vars-plaintext": "violations_found", "deployment-protection": "no_violations",
-                                   "members-no-mfa": "nothing_evaluated", "depl-no-git-fork-protection": "unknown",
-                                   "odd-counts": "unknown"})
+                                   "members-no-mfa": "nothing_evaluated", "depl-no-git-fork-protection": "no_violations_total_unreported",
+                                   "odd-counts": "unknown", "string-total": "unknown"})
         self.assertIs(output["mutedDetectable"], False)
 
     def test_whoami_keeps_username_only(self):

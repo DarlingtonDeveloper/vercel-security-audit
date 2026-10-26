@@ -84,7 +84,10 @@ def product_result(violations, total):
 
     violations > 0: violations_found (a review candidate, not yet a finding).
     violations == 0 and total > 0: no_violations (this product check and scope only).
-    total == 0: nothing_evaluated. Missing or mistyped counts: unknown.
+    violations == 0 and total omitted: no_violations_total_unreported (the CLI omits
+    totalCount for some checks; zero from a complete structured check still counts,
+    with the missing total recorded as a caveat).
+    total == 0: nothing_evaluated. Missing, negative or mistyped counts: unknown.
     Muted findings cannot be detected from this output.
     """
     if violations == UNKNOWN:
@@ -92,7 +95,7 @@ def product_result(violations, total):
     if violations > 0:
         return "violations_found"
     if total == UNKNOWN:
-        return UNKNOWN
+        return "no_violations_total_unreported"
     return "no_violations" if total > 0 else "nothing_evaluated"
 
 
@@ -104,7 +107,10 @@ def select_security_check(data):
             withheld += 1
             continue
         violations, total = _int(_get(value, "violationsCount")), _int(_get(value, "totalCount"))
-        if violations != UNKNOWN and violations < 0 or total != UNKNOWN and total < 0:
+        raw_total = _get(value, "totalCount")
+        malformed = (violations != UNKNOWN and violations < 0) or (total != UNKNOWN and total < 0) \
+            or (raw_total != UNKNOWN and total == UNKNOWN)
+        if malformed:
             violations = total = UNKNOWN
         checks[key] = {
             "productResult": product_result(violations, total),

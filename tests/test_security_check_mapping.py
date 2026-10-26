@@ -18,7 +18,9 @@ class SecurityCheckMappingTests(unittest.TestCase):
         for phrase in ("`violations_found` (violationsCount above 0)", "not yet a finding",
                        "`no_violations` (violationsCount 0 and totalCount above 0)",
                        "never for the whole checklist ID or team",
-                       "`nothing_evaluated` (totalCount 0)", "never satisfactory"):
+                       "`nothing_evaluated` (totalCount 0)", "never satisfactory",
+                       "`no_violations_total_unreported` (violationsCount 0 and totalCount omitted",
+                       "record that the total was not reported"):
             self.assertIn(phrase, CAPABILITIES)
 
     def test_muted_is_recorded_as_undetectable(self):

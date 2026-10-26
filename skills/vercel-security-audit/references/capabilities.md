@@ -146,7 +146,8 @@ Missing or mistyped fields are reported as `unknown`, never zero or false. Shape
   - `violations_found` (violationsCount above 0): an evidence-backed review candidate for the mapped checklist ID, not yet a finding. Assess it with the checklist requirement before calling it action_recommended.
   - `no_violations` (violationsCount 0 and totalCount above 0): passing for that product check and its explicit scope only, never for the whole checklist ID or team.
   - `nothing_evaluated` (totalCount 0): nothing was evaluated, so it is not evidence either way; keep the checklist ID needs_confirmation unless other evidence resolves it.
-  - `unknown` (a count missing, negative or not an integer, including a missing totalCount with zero violations): unavailable evidence; needs_confirmation or not_reviewed, never satisfactory.
+  - `no_violations_total_unreported` (violationsCount 0 and totalCount omitted, which the CLI does for some checks): treat as `no_violations` for that product check and scope, and record that the total was not reported.
+  - `unknown` (violationsCount missing, or a count negative or not an integer): unavailable evidence; needs_confirmation or not_reviewed, never satisfactory.
   - Muted findings cannot be detected from this output (`mutedDetectable: false`). Do not infer that nothing is muted. Confirm muted or accepted findings, and their reason, in the dashboard behind the pre-exposure gate or through an owner statement, and record that limitation.
   Exact counts do not mean individual findings were inspected; `--findings` exposes samples and is not used. A successful exit code means the report was produced, not that checks passed. Errors and no access are unavailable evidence, never satisfactory.
 - project ls defaults to a page of 20 in the checked version; a first page is not the whole estate. The reader follows `pagination.next` with the supported --next flag for you (see [safe pagination](#safe-pagination-with-the-reader)).
