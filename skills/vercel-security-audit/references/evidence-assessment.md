@@ -52,3 +52,15 @@ Inline owner round answers are owner statements, kept as separate evidence entri
 A statement alone cannot establish list completeness, enforcement, a setting's current state or satisfactory where the requirement needs direct observation. If it conflicts with observed evidence, keep both and use needs_confirmation. Skip, don't know or no answer leaves the status unchanged and the question open for the handoff questionnaire. A statement never authorises broader access or optional scope.
 
 For a not_reviewed check included because collection was unavailable or had no acceptable pre-exposure selection mechanism, an answer is still only an owner statement. Keep the collection gap and its reason recorded, and keep the observed setting unknown. Reassess the status with the rules above. Skip or don't know leaves the check not_reviewed. Checks not_reviewed because they are unauthorised or out of scope are never asked in the round.
+
+## Deliberate configuration and owner acceptance
+
+A setting found in the owner's codebase shows that it is set in code. It does not show the deployed state, and it does not show that anyone accepted the risk. Keep it as `source_review` evidence beside the observed setting, with both times and scopes. Code comments, the presence of a setting, an unanswered or skipped question and silence are not acceptance.
+
+- Code matches the observed setting and no requirement is agreed: needs_confirmation. Ask the owner whether the setting is deliberate and why. It may stay in the initial priorities as a confirmation request, not as a weakness.
+- Code and the observed setting disagree: keep both observations and use needs_confirmation. The deployed state may come from another source, branch or dashboard setting.
+- Code matches the observed setting but contradicts an agreed requirement: keep the recorded status and add the intent question. The code is context, not a reason to drop the finding.
+
+A setting is owner-accepted only when the owner with authority for that scope gives a reason. Record it as an owner statement with UTC statement time, role alias, scope alias and the sanitised reason. The check stays needs_confirmation: accepting a risk does not meet a requirement, and no change is proposed. There is no separate accepted status. Remove it from the initial priorities and recommendations and list it in the report's deliberate or owner-accepted settings note, with the check kept in the appendix and the acceptance in its rationale.
+
+Acceptance covers only the stated setting and scope, not other projects or environments. A reason without a statement time or role is a statement, not acceptance. If the reason relies on something the evidence shows is absent or unknown, keep the item visible as a confirmation request. The reviewer never accepts a risk on the owner's behalf.

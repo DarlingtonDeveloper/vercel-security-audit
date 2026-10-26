@@ -99,8 +99,11 @@ This unpublished schema version 1 has been corrected in place. Legacy files cont
 - `reviewed_at`, `method`, `overall_takeaway`: text. State the actual review window or that review has not occurred.
 - `confirmed_strengths`: a list of zero to 100 text entries. Include only evidence-backed strengths; the utility does not infer them from statuses.
 - `initial_priorities`: a list of zero to three text entries, ordered by owner-relevant impact and confidence.
+- `owner_accepted` (optional): a list of zero to 28 objects, each with exactly `check_id` and `evidence_ref`, for settings the owner has confirmed as deliberate with a reason. `check_id` is an exact checklist ID, unique in the list, whose check status is `needs_confirmation`. `evidence_ref` names an `owner_statement` evidence entry on that same check, which holds the reason, statement time and scope. An accepted check cannot appear in any recommendation's `check_ids`. Omitting the field is the same as an empty list, so existing version 1 files stay valid. Source-code (`source_review`) evidence alone cannot be referenced as acceptance.
 
 `follow_up` requires three text fields: `owner_decisions`, `deferred_checks`, and `suggested_recheck`. They describe proposed next actions, not actions completed by the utility.
+
+The builder always prints a `Deliberate or owner-accepted settings` subsection under Follow-up, listing each `owner_accepted` record with its check status and the referenced owner statement, or `No owner-accepted settings recorded.` It adds no status: the five statuses and derived counts are unchanged. Because `owner_accepted` is an owner-authored narrative field, an append cannot edit it. An append that moves an accepted check away from `needs_confirmation`, or that would otherwise break these rules, is rejected until the narrative is deliberately updated in a new draft.
 
 These narrative fields, the scope, title, and recommendations are owner-authored fields. An evidence append preserves them exactly as JSON values. Reassess them against the new evidence before sharing; preserved prose may be stale even when derived counts are current. Editing narrative fields is a separate deliberate local drafting operation, not an implicit append side effect.
 
