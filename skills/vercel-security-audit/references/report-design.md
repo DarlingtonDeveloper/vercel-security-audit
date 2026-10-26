@@ -8,8 +8,8 @@ Use the bundled, independently styled report. It uses Geist and Geist Mono typog
 
 The [required components](report-template.md#required-components) define what every report must contain and which rules are fixed. This is the default reading order for them, not a fixed layout:
 
-1. A short title, review window and verified scope.
-2. A balanced summary, confirmed strengths and at most three initial priorities.
+1. A short title, then the status matrix: one row per check, a Team column and one column per in-scope project, using the five status labels.
+2. A short, plain-language summary with the review window and verified scope, confirmed strengths and at most three initial priorities.
 3. Guided recommendations with responsible roles, prerequisites, numbered steps and completion checks.
 4. Follow-up decisions and the complete technical checklist in an appendix.
 
@@ -27,7 +27,9 @@ python3 "$skill_dir/scripts/render_report.py" "$report_md" -o "$report_html"
 
 The output is a single self-contained HTML file. CSS, three local WOFF2 fonts and their licence text are embedded. Opening or rendering it requires no remote images, scripts, styles, font services or analytics. External documentation links are user-activated links, not loaded assets. Links with credentials or queries are omitted, images are omitted, and raw HTML is displayed as text.
 
-Supported Markdown is deliberately bounded: a first-line H1 title, headings, paragraphs, flat ordered/unordered lists, blockquotes, fenced code, bold/emphasis, inline code and credential-free HTTPS or same-document links. Do not rely on raw HTML, images, tables, nested lists or executable diagrams for essential meaning. Use the report template's flat, numbered action steps.
+Supported Markdown is deliberately bounded: a first-line H1 title, headings, paragraphs, flat ordered/unordered lists, blockquotes, fenced code, bold/emphasis, inline code, credential-free HTTPS or same-document links, and simple pipe tables. Do not rely on raw HTML, images, nested lists or executable diagrams for essential meaning. Use the report template's flat, numbered action steps.
+
+Pipe tables are bounded too. A table is a header row immediately followed by a separator row (`| --- |` cells, at least three hyphens, optional alignment colons that are accepted but not applied), then at least one body row. Every row starts and ends with `|` and has the header's number of cells; at most 16 columns. Write `\|` for a literal pipe inside a cell, including inside inline code. Cells support the same inline formatting as paragraphs and stay escaped; a cell holding exactly one status key, such as `needs_confirmation`, renders as that status badge. Pipe lines without a valid separator stay ordinary paragraph text. A separator or body row with the wrong number of cells, a body row that does not end with `|`, a table without a body row, or more than 16 columns stops rendering with an error rather than guessing. No cell spans, nested tables, block content or HTML inside cells.
 
 The document language defaults to en. Use --lang fr or another valid language tag for translated report content. The template's shell/status labels remain English; full localisation is not implemented. Preserve requested-language Markdown as the source even if styled export is unsuitable.
 
@@ -80,7 +82,7 @@ Both JSON arguments are optional. Exit 0 means the requested structural checks p
 
 ### Count comparison contract
 
-The HTML appendix must contain each of the 24 core topic IDs and four optional topic IDs from `checklist.md` exactly once. Use a third-level heading starting `ID - Title` for each check, followed by exactly one recognised status badge produced from its `Status:` line. Keep these records in second-level sections whose headings begin `Appendix`, as in the current template. Core and optional records may share an appendix section or use separate appendix sections; IDs determine the count group. Include optional checks as `not_reviewed` when declined, with the reason. Duplicate IDs, unknown IDs, missing checks and multiple/missing/unknown statuses fail rather than being silently deduplicated. Recommendation badges and navigation text are not counted as check outcomes.
+The HTML appendix must contain each of the 24 core topic IDs and four optional topic IDs from `checklist.md` exactly once. Use a third-level heading starting `ID - Title` for each check, followed by exactly one recognised status badge produced from its `Status:` line. Keep these records in second-level sections whose headings begin `Appendix`, as in the current template. Core and optional records may share an appendix section or use separate appendix sections; IDs determine the count group. Include optional checks as `not_reviewed` when declined, with the reason. Duplicate IDs, unknown IDs, missing checks and multiple/missing/unknown statuses fail rather than being silently deduplicated. Recommendation badges, status-matrix and other table badges, and navigation text are not counted as check outcomes; a check whose only status is in a table fails as missing its status.
 
 When structured counts are available, pass a separate `--expected-summary` file with exactly this small contract. All five keys are required in each group, including zero values; counts must be nonnegative JSON integers, not booleans. This synthetic example totals 24 core and four optional outcomes:
 
@@ -111,7 +113,7 @@ Without an expected-summary file, output says summary parity was not checked. Wi
 
 ### Passive document and identity checks
 
-The checker accepts only the bundled renderer's passive HTML dialect. It checks balanced tags, unique attributes/IDs, required landmarks, resolved same-document links, a deny-by-default CSP before style content, and credential-free user-activated HTTPS links. It rejects scripts (including JSON script elements), event handlers, forms, frames, objects, images, SVG, linked styles, preload/preconnect elements, refresh directives and unexpected attributes. No image or official logo asset is permitted; logo-marked markup is also rejected. Preserve the required community/unofficial header and footer disclosure, non-endorsement and non-certification statements. Do not add an official logo, official sign-off or claim of certification in text either; human review still checks identity and unsupported claims.
+The checker accepts only the bundled renderer's passive HTML dialect. It checks balanced tags, unique attributes/IDs, required landmarks, the renderer's exact table shape (wrapped tables directly in the report body, one header row of column headers, body rows of the same width, no other table attributes), resolved same-document links, a deny-by-default CSP before style content, and credential-free user-activated HTTPS links. It rejects scripts (including JSON script elements), event handlers, forms, frames, objects, images, SVG, linked styles, preload/preconnect elements, refresh directives and unexpected attributes. No image or official logo asset is permitted; logo-marked markup is also rejected. Preserve the required community/unofficial header and footer disclosure, non-endorsement and non-certification statements. Do not add an official logo, official sign-off or claim of certification in text either; human review still checks identity and unsupported claims.
 
 Embedded CSS must match the installed bundled stylesheet and the three local WOFF2 font data declarations exactly. This conservative comparison rejects added `@import`, remote `url()`, CSS escapes, substituted fonts and extra style blocks without pretending to implement a general CSS parser. Locally modified branding/styles must be reviewed and reconciled with the trusted assets before export; do not weaken the checker to accept an arbitrary document. It is not a secret scanner, evidence validator, general HTML sanitizer or independent integrity check of a modified skill installation.
 

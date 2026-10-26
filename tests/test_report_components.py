@@ -27,7 +27,7 @@ class RequiredComponentsTests(unittest.TestCase):
         mandatory = block.split("Mandatory components and their fixed rules:", 1)[1].split("Flexible,", 1)[0]
         names = re.findall(r"^\d+\. ([A-Z][^:]+):", mandatory, re.M)
         self.assertEqual(names, [
-            "Title", "Review summary", "Initial priorities", "Confirmed strengths",
+            "Title", "Status matrix", "Review summary", "Initial priorities", "Confirmed strengths",
             "Scope and limitations", "Optional scope decisions", "Coverage limits", "Actions",
             "Follow-up", "Owner confirmation questionnaire", "Appendix check outcomes", "Disclaimers"])
         for rule in ("at most three", "numbered single-action steps", "`Done when`",
@@ -40,17 +40,61 @@ class RequiredComponentsTests(unittest.TestCase):
     def test_flexibility_is_bounded(self):
         block = components()
         flexible = block.split("Flexible, provided the fixed rules hold:", 1)[1]
-        for phrase in ("Order of components 4 to 10", "exactly `Recommendations`",
+        for phrase in ("Order of components 5 to 11", "exactly `Recommendations`", "Grouping matrix rows by domain",
+                       "collapsing several checks into one matrix cell",
                        "`Initial priorities`", "beginning `Appendix` are counted",
                        "Not allowed in any layout", "dropping or hiding a mandatory component",
                        "merging core and optional counts"):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, flexible)
 
+    def test_status_matrix_opens_the_report_with_the_five_existing_statuses(self):
+        text = TEMPLATE.read_text(encoding="utf-8")
+        headings = re.findall(r"^## (.+)$", text, re.M)
+        self.assertEqual(headings[:2], ["Status at a glance", "Review summary"])
+        matrix = text.split("## Status at a glance", 1)[1].split("\n## ", 1)[0]
+        for phrase in ("| Check | Team | [project alias]", "| Optional check | Team |",
+                       "`satisfactory`, `action_recommended`, `needs_confirmation`, `not_reviewed` or `not_applicable`",
+                       "Do not use pass, warning, fail", "Team-wide", "By project",
+                       "authoritative, counted outcome", "must not show a better result than the appendix supports"):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, matrix)
+        mandatory = components().split("Flexible,", 1)[0]
+        self.assertIn("2. Status matrix: opens the report", mandatory)
+        self.assertIn("never pass, warning or fail", mandatory)
+        self.assertIn("its badges are not counted as outcomes", mandatory)
+        summary = text.split("## Review summary", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("short and in plain language", summary)
+        self.assertIn("technical detail to the appendix", summary)
+
+    def test_example_matrix_opens_report_and_agrees_with_the_appendix(self):
+        text = EXAMPLE.read_text(encoding="utf-8")
+        self.assertEqual(re.findall(r"^## (.+)$", text, re.M)[:2], ["Status at a glance", "Review summary"])
+        matrix = text.split("## Status at a glance", 1)[1].split("\n## ", 1)[0]
+        appendix = dict(re.findall(r"^### ([A-Z]{3}-\d{2}) - .+\nStatus: ([a-z_]+)$", text, re.M))
+        self.assertEqual(len(appendix), 28)
+        rows = {}
+        for line in matrix.splitlines():
+            cells = [cell.strip() for cell in line.strip("|").split("|")]
+            if re.match(r"[A-Z]{3}-\d{2} ", cells[0]):
+                rows[cells[0][:6]] = cells[1:]
+        self.assertEqual(set(rows), set(appendix))
+        statuses = set(appendix.values())
+        for identifier, cells in rows.items():
+            with self.subTest(check=identifier):
+                self.assertEqual(len(cells), 3)
+                if cells[0] == "By project":
+                    self.assertEqual(set(cells[1:]), {appendix[identifier]})
+                else:
+                    self.assertEqual(cells, [appendix[identifier], "Team-wide", "Team-wide"])
+                self.assertTrue(set(cells) <= statuses | {"By project", "Team-wide"})
+
     def test_skill_step_five_treats_template_as_contract_plus_example(self):
         text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
         step = text.split("### 5. Draft the guided report", 1)[1].split("\n### ", 1)[0]
         self.assertIn("required components are the contract and its layout is one example", step)
+        self.assertIn("Open with the status matrix", step)
+        self.assertIn("keep technical detail in the appendix", step)
 
     def test_repository_example_satisfies_mandatory_components_in_its_own_layout(self):
         text = EXAMPLE.read_text(encoding="utf-8")

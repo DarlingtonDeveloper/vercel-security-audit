@@ -550,14 +550,30 @@ def _questionnaire_lines(records):
     return lines
 
 
+def _matrix_lines(report, checks):
+    """One status column: schema version 1 holds one status per check for the scope."""
+    lines = ["## Status at a glance", "",
+             "Each check's recorded status for the whole authorised scope. Schema version 1 stores one status "
+             "per check, so there are no per-project columns; the appendix holds the evidence and is the counted outcome.", ""]
+    for identifiers, label in ((CORE_IDS, "Check"), (OPTIONAL_IDS, "Optional check")):
+        if identifiers is OPTIONAL_IDS:
+            lines += ["Optional checks, kept separate from the 24 core checks:", ""]
+        lines += [f"| {label} | {report['scope_alias']} |", "| --- | --- |"]
+        lines += [f"| {identifier} {CHECK_TITLES[identifier]} | {checks[identifier]['status']} |"
+                  for identifier in identifiers]
+        lines += [""]
+    return lines
+
+
 def build_markdown(report):
     """Build readable guided Markdown; author text is never a template or code."""
     counts = build_summary(report)
     summary, scope = report["review_summary"], report["scope"]
     checks = {check["id"]: check for check in report["checks"]}
     lines = ["# " + report["title"], "",
-             "Community-maintained and unofficial. Not endorsed by Vercel. Local draft; review before sharing.", "",
-             "## Review summary", "",
+             "Community-maintained and unofficial. Not endorsed by Vercel. Local draft; review before sharing.", ""]
+    lines += _matrix_lines(report, checks)
+    lines += ["## Review summary", "",
              f"- Revision: {report['revision']}", f"- Scope alias: {report['scope_alias']}",
              "- Reviewed at: " + summary["reviewed_at"], "- Method: " + summary["method"],
              "- Overall takeaway: " + summary["overall_takeaway"]]

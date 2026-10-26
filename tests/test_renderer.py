@@ -144,6 +144,7 @@ class RendererCase(unittest.TestCase):
             "p", "span", "h1", "h2", "h3", "h4", "h5", "h6", "aside", "main",
             "ul", "ol", "li", "a", "section", "article", "blockquote", "pre",
             "code", "strong", "em", "hr", "br", "footer", "details", "summary",
+            "table", "thead", "tbody", "tr", "th", "td",
         }
         for element in parsed.find():
             self.assertIn(element.tag, allowed)
@@ -514,6 +515,96 @@ class BundledFontTests(RendererCase):
         self.assertEqual(details.find("a"), [])
 
 
+class PipeTableTests(RendererCase):
+    MATRIX = ("# Matrix review\n\n## Status at a glance\n\n"
+              "| Check | Team | `example-site` |\n| --- | :---: | ---: |\n"
+              "| **IAM-01** team roles | satisfactory | Team-wide |\n"
+              "| DEP-01 [docs](https://example.test/docs) | By project | action_recommended |\n"
+              "| CRE-01 | needs_confirmation | Status: not_reviewed |\n")
+
+    def table(self, source):
+        parsed = self.parse(self.render(source))
+        self.assert_passive(parsed)
+        return parsed
+
+    def test_header_separator_and_rows_render_as_semantic_table(self):
+        parsed = self.table(self.MATRIX)
+        wrapper, = parsed.find("div", "table-wrap")
+        table, = wrapper.find("table")
+        self.assertEqual([c.tag for c in table.children], ["thead", "tbody"])
+        self.assertEqual([th.text for th in table.find("th")], ["Check", "Team", "example-site"])
+        self.assertTrue(all(th.attrs == {"scope": "col"} for th in table.find("th")))
+        rows = table.find("tbody")[0].find("tr")
+        self.assertEqual([len(row.find("td")) for row in rows], [3, 3, 3])
+        self.assertEqual(table.find("strong")[0].text, "IAM-01")
+        self.assertEqual(table.find("a")[0].attrs["href"], "https://example.test/docs")
+        self.assertEqual(table.find("code")[0].text, "example-site")
+
+    def test_status_keys_in_cells_become_visible_badges(self):
+        parsed = self.table(self.MATRIX)
+        badges = [b.text for b in parsed.find("td")[0].parent.parent.find("span", "status-badge")]
+        self.assertEqual(badges, ["Satisfactory", "Action recommended", "Needs confirmation", "Not reviewed"])
+        cells = [td.text for td in parsed.find("td")]
+        self.assertIn("Team-wide", cells)
+        self.assertIn("By project", cells)
+        # Unknown or partial status words stay literal text, never a passing badge.
+        parsed = self.table("# T\n\n| A |\n| --- |\n| passed |\n| satisfactory. |\n| Satisfactory |\n")
+        self.assertEqual(parsed.find("span", "status-badge"), [])
+
+    def test_cell_text_is_escaped_and_raw_html_stays_literal(self):
+        source = "# T\n\n| <b>Head</b> |\n| --- |\n| <script>x()</script> & <img src=x> |\n"
+        document = self.render(source)
+        parsed = self.table(source)
+        self.assertEqual(parsed.find("script"), [])
+        self.assertEqual(parsed.find("img"), [])
+        self.assertEqual(parsed.find("th")[0].text, "<b>Head</b>")
+        self.assertEqual(parsed.find("td")[0].text, "<script>x()</script> & <img src=x>")
+        self.assertIn("&lt;script&gt;", document)
+
+    def test_escaped_pipes_are_literal_cell_text(self):
+        parsed = self.table("# T\n\n| A \\| B | C |\n| --- | --- |\n| `x\\|y` | z |\n")
+        self.assertEqual([th.text for th in parsed.find("th")], ["A | B", "C"])
+        self.assertEqual(parsed.find("code")[0].text, "x|y")
+
+    def test_unsafe_links_and_images_in_cells_are_omitted(self):
+        parsed = self.table("# T\n\n| A | B |\n| --- | --- |\n"
+                            "| [x](javascript:alert(1)) | ![i](https://example.test/i.png) |\n")
+        self.assertEqual(parsed.find("img"), [])
+        self.assertEqual([a for a in parsed.find("a") if a.parent.tag == "td"], [])
+        self.assertIn("[link omitted]", parsed.find("td")[0].text)
+
+    def test_pipe_lines_without_separator_stay_paragraph_text(self):
+        for source in ("# T\n\n| A | B |\n| x | y |\n", "# T\n\n| A | B |\n| -- | -- |\n",
+                       "# T\n\n| A | B |\n\n| --- | --- |\n", "# T\n\nA | B\n--- | ---\n"):
+            with self.subTest(source=source):
+                parsed = self.table(source)
+                self.assertEqual(parsed.find("table"), [])
+                self.assertIn("A", parsed.find("main")[0].find("p")[0].text)
+
+    def test_malformed_tables_are_rejected_without_echoing_content(self):
+        for source in ("# T\n\n| SECRET_CANARY | B |\n| --- |\n| x | y |\n",
+                       "# T\n\n| A |\n| --- | --- |\n| x |\n",
+                       "# T\n\n| A | B |\n| --- | --- |\n| SECRET_CANARY |\n",
+                       "# T\n\n| A | B |\n| --- | --- |\n| x | y | z |\n",
+                       "# T\n\n| A |\n| --- |\n| SECRET_CANARY\n",
+                       "# T\n\n| A |\n| --- |\n",
+                       "# T\n\n" + "|" + " c |" * 17 + "\n|" + " --- |" * 17 + "\n|" + " x |" * 17 + "\n"):
+            with self.subTest(source=source[:40]), self.assertRaises(RENDERER.ReportError) as raised:
+                self.render(source)
+            self.assertNotIn("SECRET_CANARY", str(raised.exception))
+
+    def test_tables_end_at_blank_or_non_pipe_lines_and_close_lists(self):
+        parsed = self.table("# T\n\n- item\n| A |\n| --- |\n| x |\nafter\n\n| B |\n| --- |\n| y |\n")
+        self.assertEqual(len(parsed.find("table")), 2)
+        self.assertEqual(parsed.find("ul")[0].find("table"), [])
+        self.assertEqual(parsed.find("main")[0].find("p")[0].text, "after")
+
+    def test_pipe_lines_inside_fenced_code_are_code(self):
+        parsed = self.table("# T\n\n```\n| A |\n| --- |\n| x |\n```\n")
+        self.assertEqual(parsed.find("table"), [])
+        self.assertIn("| --- |", parsed.find("pre")[0].text)
+
+
 class SyntheticExampleTests(RendererCase):
     def test_example_renders_all_core_and_optional_checks_with_exact_status_counts(self):
         source = (ROOT / "examples" / "security-audit.md").read_text(encoding="utf-8")
@@ -539,7 +630,11 @@ class SyntheticExampleTests(RendererCase):
                                   "Needs confirmation": 6, "Not reviewed": 3, "Not applicable": 1}))
         self.assertEqual(Counter(b.text for b in optional.find("span", "status-badge")),
                          Counter({"Not reviewed": 4}))
-        self.assertEqual(len(parsed.find("span", "status-badge")), 28)
+        # 28 appendix outcomes plus status-matrix cells, which are summaries, not outcomes.
+        matrix = sections["Status at a glance"]
+        self.assertEqual(len(matrix.find("table")), 2)
+        self.assertEqual(len(parsed.find("span", "status-badge")) - len(matrix.find("span", "status-badge")), 28)
+        self.assertEqual(len(matrix.find("span", "status-badge")), 34)
         self.assertEqual(len(parsed.find("article", "recommendation")), 2)
         priorities = sections["Initial priorities"].find("ol")[0].find("li")
         self.assertEqual([e.attrs.get("value") for e in priorities], ["1", "2", "3"])

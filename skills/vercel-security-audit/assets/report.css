@@ -229,6 +229,17 @@ pre {
 }
 pre code { padding: 0; background: none; font-size: inherit; }
 hr { margin: 28px 0; border: 0; border-top: 1px solid var(--line); }
+.table-wrap { max-width: 100%; margin: 0 0 24px; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.45; }
+th, td {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: normal;
+}
+thead th { background: var(--surface); color: var(--ink); font-weight: 650; }
+td .status-badge { white-space: nowrap; }
 .appendix { font-size: 14px; }
 .report-footer {
   margin-top: 24px;
@@ -310,6 +321,12 @@ hr { margin: 28px 0; border: 0; border-top: 1px solid var(--line); }
     font-size: 8pt;
   }
   blockquote, dl.metadata { background: #fff; color: #000; border-color: #bbb; }
+  .table-wrap { overflow: visible; }
+  table { font-size: 9pt; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; page-break-inside: avoid; }
+  th, td { padding: 1.5mm 2mm; border-color: #bbb; }
+  thead th { background: #fff; color: #000; }
   dl.metadata, .appendix { font-size: 10.5pt; }
   code, pre { background: #fff; color: #000; }
   pre {
