@@ -6,7 +6,7 @@ Readable Markdown remains the mandatory, portable deliverable.
 """
 import argparse
 import copy
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
@@ -68,6 +68,81 @@ CHECK_TITLES = dict(zip(CHECK_IDS, (
     "Application authentication boundaries", "Repository governance evidence",
     "Secret handling and log redaction design", "Application recovery design",
 )))
+
+
+MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
+def local_zone():
+    """The agent host's local zone as (tzinfo or None, IANA key or None).
+
+    Standard library and local files only: TZ, then the /etc/localtime link.
+    None means "use the C library's local time", which still honours TZ.
+    """
+    candidate = os.environ.get("TZ", "").lstrip(":")
+    if not candidate:
+        try:
+            target = os.path.realpath("/etc/localtime")
+        except (OSError, ValueError):
+            target = ""
+        candidate = target.split("/zoneinfo/", 1)[1] if "/zoneinfo/" in target else ""
+    if candidate:
+        try:
+            from zoneinfo import ZoneInfo
+            return ZoneInfo(candidate), candidate
+        except (ImportError, ValueError, OSError, KeyError):
+            pass  # Unknown key or no tz database: fall back to C-library local time.
+    return None, None
+
+
+def _clock(moment, with_date):
+    text = f"{moment.hour:02}:{moment.minute:02}"
+    return f"{moment.day} {MONTHS[moment.month - 1]} {moment.year}, {text}" if with_date else text
+
+
+def _span(start, end, single, with_date=True):
+    # single is decided from UTC minutes: across a DST fall-back two instants can share a wall time.
+    if single:
+        return _clock(start, with_date)
+    if start.date() == end.date():
+        return _clock(start, with_date) + "-" + _clock(end, False)
+    return _clock(start, True) + " - " + _clock(end, True)
+
+
+def _zone_label(moment):
+    name = moment.tzname() or ""
+    if re.fullmatch(r"[A-Za-z]{2,6}", name):
+        return name
+    offset = moment.utcoffset()
+    minutes = int(offset.total_seconds() // 60) if offset is not None else 0
+    sign, minutes = ("+" if minutes >= 0 else "-"), abs(minutes)
+    return f"UTC{sign}{minutes // 60:02}:{minutes % 60:02}"
+
+
+def friendly_window(start, end, zone=None, key=None):
+    """Summary-friendly local window with UTC, e.g.
+    '26 Oct 2026, 13:44-14:40 local time (CET, Europe/Paris; 12:44-13:40 UTC)'.
+
+    start/end are aware UTC datetimes. zone None uses the host's local time.
+    Minutes are truncated; exact UTC timestamps stay in the evidence log.
+    """
+    start, end = start.astimezone(timezone.utc), end.astimezone(timezone.utc)
+    single = start.replace(second=0, microsecond=0) == end.replace(second=0, microsecond=0)
+    try:
+        local = [moment.astimezone(zone) if zone is not None else moment.astimezone() for moment in (start, end)]
+    except (OverflowError, ValueError, OSError):
+        return _span(start, end, single) + " UTC (local time unavailable)"
+    labels = []
+    for moment in local:
+        label = _zone_label(moment)
+        if label not in labels:
+            labels.append(label)
+    label = " to ".join(labels)
+    if key and key not in labels:
+        label += ", " + key
+    same_dates = (start.date(), end.date()) == (local[0].date(), local[1].date())
+    utc = _span(start, end, single, with_date=not (same_dates and start.date() == end.date()))
+    return f"{_span(local[0], local[1], single)} local time ({label}; {utc} UTC)"
 
 
 class ModelError(ReportError):
@@ -565,9 +640,23 @@ def _matrix_lines(report, checks):
     return lines
 
 
-def build_markdown(report):
-    """Build readable guided Markdown; author text is never a template or code."""
+def _evidence_window(report, zone, key):
+    times = [_utc(entry["observed_at"]) for check in report["checks"] for entry in check["evidence_log"]]
+    if not times:
+        return "- Evidence recorded: no observations logged yet."
+    return ("- Evidence recorded: " + friendly_window(min(times), max(times), zone, key)
+            + ", first to last logged observation. Exact UTC times are in the appendix.")
+
+
+def build_markdown(report, zone=None):
+    """Build readable guided Markdown; author text is never a template or code.
+
+    zone: optional tzinfo for the summary's friendly times; default is the host's.
+    """
     counts = build_summary(report)
+    key = getattr(zone, "key", None)
+    if zone is None:
+        zone, key = local_zone()
     summary, scope = report["review_summary"], report["scope"]
     checks = {check["id"]: check for check in report["checks"]}
     lines = ["# " + report["title"], "",
@@ -575,7 +664,8 @@ def build_markdown(report):
     lines += _matrix_lines(report, checks)
     lines += ["## Review summary", "",
              f"- Revision: {report['revision']}", f"- Scope alias: {report['scope_alias']}",
-             "- Reviewed at: " + summary["reviewed_at"], "- Method: " + summary["method"],
+             "- Reviewed at: " + summary["reviewed_at"], _evidence_window(report, zone, key),
+             "- Method: " + summary["method"],
              "- Overall takeaway: " + summary["overall_takeaway"]]
     for group, total in (("core", 24), ("optional", 4)):
         lines.append(f"- {group.capitalize()} coverage ({total}): " + "; ".join(
