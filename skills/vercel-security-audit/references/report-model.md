@@ -232,6 +232,8 @@ Each answer requires exactly:
 
 Records are chronological per question/scope/role. Keep multiple Owners' supplied scoped answers distinct without accessing another Owner's personal metadata. No DMs, emails, bot requests, test notification events or other outreach occurs. Any communication still requires separate approval of exact final content and destination. An answer does not replace missing direct visibility or broaden optional consent.
 
+Answers from the SKILL.md step 4 inline owner round use these records for the three questionnaire groups. Answers to other safe per-check questions are appended as evidence entries on that check with `source_kind` `owner_statement`. Skipped questions get no record and stay not answered; this needs no new field or schema version.
+
 ## Atomic append contract
 
 The patch top level requires `expected_revision` (integer at least 1). Its only optional keys are `checks`, `coverage_limits`, and `owner_confirmations`, each a list. At least one list must contain a new mutation; omitted or empty lists make no change. Metadata-only patches are supported. A combined patch increments the revision exactly once, not once per record type. New record IDs must be globally unique across evidence, feed snapshots, retry attempts, and Owner answers; existing records are retained as unchanged prefixes. Duplicates, replacement attempts, and out-of-scope records reject the whole patch.

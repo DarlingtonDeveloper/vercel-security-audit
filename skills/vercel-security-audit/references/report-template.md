@@ -37,7 +37,7 @@ List at most three evidence-backed priorities, ordered by owner-relevant impact 
 - Sources used: [verified plugin/CLI capability descriptions and browser views; refer to `capabilities.md`, not guessed commands or UI paths].
 - Missing evidence: [topic ID, unavailable field/view, access or plan limit, and exact question remaining].
 - Conflicting or stale evidence: [topic ID, conflicting observations/times, and what would resolve the difference].
-- Owner statements: [process/ownership claims distinguished from observed configuration].
+- Owner statements: [process/ownership claims distinguished from observed configuration; inline owner round run with UTC time, or skipped with reason (for example noninteractive host or owner not present)].
 - Source/application review: [not authorized, not reviewed, or explicitly authorized materials and coverage].
 - Observed plan: [plan label, scope alias, source and observation date; unknown if unavailable].
 - Verified current per-feature entitlements: [feature, effective scope, account-specific/custom features or add-ons, role visibility, current public documentation and verification date, account facts and date; otherwise verification pending].
@@ -111,7 +111,7 @@ Verify documentation against current public sources before sharing instructions.
 
 ### Owner confirmation questionnaire
 
-Include all three question groups in the report handed to the user, for each Owner within the agreed scope; do not collect other Owners' personal metadata through one person's account. Reuse already supplied confirmations without re-asking resolved questions. No automatic DMs, emails, bot requests or other outreach: any communication requires separate approval of the exact final content and destination. Do not send test messages or notification events during the review.
+Include all three question groups in the report handed to the user, for each Owner within the agreed scope; do not collect other Owners' personal metadata through one person's account. Reuse already supplied confirmations, including inline owner round answers, without re-asking resolved questions. No automatic DMs, emails, bot requests or other outreach: any communication requires separate approval of the exact final content and destination. Do not send test messages or notification events during the review.
 
 Keep replies as Owner self-statements (`source_kind: owner_statement`), separate from directly observed configuration. For each question record the related check, scope alias, responding role alias, answer or unavailable, UTC statement time, UTC metadata observation time if known, and any separately observed evidence reference. Missing dates remain unknown, not inferred from the report date. Unanswered groups remain explicitly not answered; an answer does not promote a check status. Do not collect personal identifiers to prove authorship. State precisely which facts are still unresolved; an attempted review with unavailable or conflicting facts remains needs_confirmation (or not_reviewed if never collected). An Owner statement is not a substitute for missing direct visibility. Apply [evidence assessment](evidence-assessment.md) to conflicts and not_applicable claims; do not broaden access or request elevated credentials to complete the questionnaire.
 

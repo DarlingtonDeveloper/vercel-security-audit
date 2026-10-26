@@ -57,6 +57,20 @@ Optional authorised checks DEP-04, SRC-04, SEC-04 and OPS-04 require separately 
 
 Label every answer as an owner statement with UTC time, role category, scope alias, question and limits. Owner value summaries remain labelled statements, never browser observations. Missing observed data stays unknown; a statement does not establish list completeness, enforcement or satisfactory state without adequate evidence for that requirement. An unobserved setting is not disabled. Preserve needs_confirmation for attempted but incomplete evidence and not_reviewed for skipped collection.
 
+### Inline owner round before the first report
+
+Use this round when the owner or authorised user is present in an interactive session, after the planned collection pass and provisional assessment and before the first report is drafted. It is the planned owner-statement route, not a second collection pass, and it closes before drafting starts.
+
+1. Select only checks that are still needs_confirmation and whose missing fact an owner statement could resolve, such as intent, responsible role, review process or an aggregate the owner can see. Leave out checks whose gap needs direct observation, list completeness or enforcement proof, not_reviewed checks and optional checks without per-ID approval.
+2. Build the questions from the safe per-check questions above and, where the present Owner's own metadata is still unresolved, the three Owner confirmation question groups in the [report template](report-template.md#owner-confirmation-questionnaire). Ask only about the authorised scope.
+3. Send one batched message, grouped by domain, with each question labelled by check ID. Say at the top that any question can be answered "skip" or "don't know", and that answers should be aggregates, categories and roles, never secrets, credentials, recovery codes, names, emails, raw IDs, URLs or screenshots.
+4. Ask only the person already in the conversation. Do not contact other Owners, send DMs, emails or test notifications, or ask the user to fetch another Owner's personal metadata.
+5. Record each answer as an owner statement with UTC statement time, role alias, scope alias, check ID, question and limits. Record "skip" as not answered and "don't know" as unavailable; neither changes the status. Do not ask follow-up rounds. Questions raised by the answers go to the handoff questionnaire.
+6. Statements never become observed configuration and never authorise broader access, new pages, another collection pass or optional scope. An offer of more access is a scope request for a later, separately agreed review.
+7. If an answer contains a secret, credential, personal identifier or access-bearing URL, do not repeat, quote or record it. Follow the accidental exposure procedure below.
+
+Noninteractive hosts, or sessions where the owner is not present, skip this round. Record that it was not run and why, and keep every unresolved question for the handoff questionnaire.
+
 ## Accidental exposure: stop and hand off
 
 This applies to any unexpected exposure, whether it came from the browser, CLI output or a connector response. First classify what was exposed from the action and field type, without re-reading the content:
