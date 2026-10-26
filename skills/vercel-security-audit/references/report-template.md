@@ -41,7 +41,7 @@ List at most three evidence-backed priorities, ordered by owner-relevant impact 
 - Source/application review: [not authorized, not reviewed, or explicitly authorized materials and coverage].
 - Observed plan: [plan label, scope alias, source and observation date; unknown if unavailable].
 - Verified current per-feature entitlements: [feature, effective scope, account-specific/custom features or add-ons, role visibility, current public documentation and verification date, account facts and date; otherwise verification pending].
-- Applicability decisions: [feature/subfeature, verified rationale and evidence; a 403, upgrade prompt or plan label alone does not establish not_applicable; mixed-check unresolved settings remain visible].
+- Applicability decisions: [feature/subfeature, verified rationale and evidence; a 403, upgrade prompt or plan label alone does not establish not_applicable, but a structured plan entitlement field from a verified read can when current documentation agrees (see evidence assessment); mixed-check unresolved settings remain visible].
 - Documentation verification: [verified canonical public sources with dates, or verification pending].
 
 Unavailable fields mean unknown, not disabled. An optional policy being off is not automatically a vulnerability. Plan limitations are not misconfigurations. A metadata change does not prove credential rotation; age does not prove a project is unused. Code or Git organization names do not prove ownership. Platform API authentication does not establish application authentication.
