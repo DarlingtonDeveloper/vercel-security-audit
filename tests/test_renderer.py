@@ -570,9 +570,10 @@ class RendererCLITests(RendererCase):
     def assert_cli_failure(self, result, secret="SYNTHETIC_SOURCE_CANARY"):
         self.assertEqual(result.returncode, 1)
         self.assertEqual(result.stdout, "")
-        self.assertEqual(result.stderr,
-                         "Could not render report. Check the sanitised Markdown, bundled assets "
-                         "and new output path. Existing files were preserved.\n")
+        # Specific, value-free diagnostics on one line (#29).
+        self.assertTrue(result.stderr.startswith("Could not render report"), result.stderr)
+        self.assertTrue(result.stderr.endswith("Existing files were preserved.\n"), result.stderr)
+        self.assertEqual(result.stderr.count("\n"), 1)
         self.assertNotIn(secret, result.stdout + result.stderr)
         self.assertNotIn(str(self.source), result.stderr)
         self.assertNotIn("Traceback", result.stderr)
@@ -648,6 +649,63 @@ class RendererCLITests(RendererCase):
                           extra=("--lang", 'en" onload="synthetic'))
         self.assert_cli_failure(result)
         self.assertFalse(self.output.exists())
+
+
+class RendererPublishTests(unittest.TestCase):
+    """A failed write must leave nothing at the destination so a retry works (#30)."""
+
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.directory = Path(self.temporary.name)
+        self.source = self.directory / "synthetic.md"
+        self.source.write_text("# Synthetic review\n\n## Summary\nSafe text.", encoding="utf-8")
+        self.output = self.directory / "report.html"
+
+    def main(self):
+        with patch("sys.stdout"), patch("sys.stderr"):
+            return RENDERER.main([str(self.source), "-o", str(self.output)])
+
+    def assert_nothing_published(self):
+        self.assertFalse(self.output.exists())
+        self.assertFalse(list(self.directory.glob(".report-*")))
+
+    def test_failed_write_publishes_nothing_and_retry_succeeds(self):
+        real_fdopen = os.fdopen
+
+        class PartialWriter:
+            """Writes 100 bytes, then fails like a full disk."""
+            def __init__(self, stream):
+                self.stream = stream
+            def __enter__(self):
+                return self
+            def __exit__(self, *exc):
+                self.stream.close()
+            def fileno(self):
+                return self.stream.fileno()
+            def flush(self):
+                self.stream.flush()
+            def write(self, data):
+                self.stream.write(data[:100])
+                self.stream.flush()
+                raise OSError(28, "No space left on device")
+
+        def failing_fdopen(descriptor, *args, **kwargs):
+            return PartialWriter(real_fdopen(descriptor, *args, **kwargs))
+
+        with patch.object(RENDERER.os, "fdopen", failing_fdopen):
+            self.assertEqual(self.main(), 1)
+        self.assert_nothing_published()
+        self.assertEqual(self.main(), 0)
+        self.assertEqual(stat.S_IMODE(self.output.stat().st_mode), 0o600)
+        self.assertTrue(self.output.read_text(encoding="utf-8").startswith("<!doctype html>"))
+
+    def test_failed_fsync_or_link_publishes_nothing(self):
+        for target in ("fsync", "link"):
+            with self.subTest(target=target):
+                with patch.object(RENDERER.os, target, side_effect=OSError(5, "I/O error")):
+                    self.assertEqual(self.main(), 1)
+                self.assert_nothing_published()
 
 
 if __name__ == "__main__":

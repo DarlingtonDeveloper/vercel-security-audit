@@ -12,11 +12,16 @@ import os
 from pathlib import Path
 import re
 import sys
-import tempfile
 
 # Importing the renderer must not create or replace cache files in the skill.
 sys.dont_write_bytecode = True
-from render_report import MAX_BYTES, STATUSES, render_report
+# Resolve the sibling renderer from this file, not sys.path[0], so the helper
+# also works under python -I (which does not add the script directory).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+# publish_new is shared with the renderer: one output per invocation avoids
+# multi-file partial publication; distinct paths may branch a revision.
+from render_report import (MAX_BYTES, STATUSES, ReportError, describe_os_error,
+                           publish_new, render_report)
 
 CORE_IDS = tuple(f"{domain}-{index:02}" for domain in
                  ("IAM", "CRE", "DEP", "FWB", "SRC", "SEC", "DOM", "OPS")
@@ -65,8 +70,11 @@ CHECK_TITLES = dict(zip(CHECK_IDS, (
 )))
 
 
-class ModelError(ValueError):
-    """Value-free diagnostics: never echo source keys, paths or evidence."""
+class ModelError(ReportError):
+    """Value-free diagnostics: never echo source keys, paths or evidence.
+
+    Messages are literal strings, so main() can print them to tell failures apart.
+    """
 
 
 def _require(condition, message):
@@ -634,28 +642,13 @@ def load_json(path):
     try:
         return json.loads(data.decode("utf-8"), object_pairs_hook=_unique_object,
                           parse_constant=_invalid_constant)
+    except ModelError:
+        raise  # Keep the specific duplicate-key / non-finite diagnostics.
     except (ValueError, UnicodeError, RecursionError):
         raise ModelError("Invalid JSON input.") from None
 
 
-def publish_new(path, data):
-    """Stage private bytes, then atomically link to a fresh path, never replace.
-
-    One output per invocation avoids multi-file partial publication. Same-path
-    writers race on link(2): exactly one wins. Distinct paths may branch a revision.
-    Requires a trusted private output directory and same-filesystem hard links.
-    """
-    path = Path(path)
-    descriptor, staging = tempfile.mkstemp(prefix=".report-", suffix=".tmp", dir=path.parent)
-    try:
-        with os.fdopen(descriptor, "wb") as stream:
-            os.fchmod(stream.fileno(), 0o600)
-            stream.write(data)
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.link(staging, path)
-    finally:
-        os.unlink(staging)
+UNCHANGED = "Inputs and existing files were not modified."
 
 
 class _Parser(argparse.ArgumentParser):
@@ -683,6 +676,7 @@ def main(argv=None):
             command.add_argument("--format", choices=("markdown", "html"), default="markdown")
             command.add_argument("--lang", default="en", help="HTML language tag; shell labels remain English")
     args = parser.parse_args(argv)
+    role = "source file"
     try:
         if args.command == "init":
             data = json_bytes(new_report(args.scope_alias, args.title))
@@ -693,16 +687,26 @@ def main(argv=None):
                 print("Report model is valid. Evidence truth and sanitisation still require human review.")
                 return 0
             if args.command == "append":
+                role = "patch file"
                 data = json_bytes(append_evidence(report, load_json(args.patch)))
             elif args.command == "export-summary":
                 data = json_bytes(build_summary(report))
             else:
                 markdown = build_markdown(report)
+                role = "bundled assets"
                 data = (render_report(markdown, args.lang) if args.format == "html" else markdown).encode("utf-8")
+        role = "output path"
         publish_new(args.output, data)
-    except (OSError, ValueError, UnicodeError, RecursionError):
+    except ReportError as error:
+        print(f"Could not manage report: {error} {UNCHANGED}", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"Could not manage report: {describe_os_error(role, error)} "
+              f"Output paths must be new. {UNCHANGED}", file=sys.stderr)
+        return 1
+    except (ValueError, UnicodeError, RecursionError):
         print("Could not manage report. Check the pre-sanitised schema, revision, bundled assets "
-              "and fresh output path. Inputs and existing files were not modified.", file=sys.stderr)
+              f"and fresh output path. {UNCHANGED}", file=sys.stderr)
         return 1
     print("New private report artifact created. Review before sharing; Markdown remains required.")
     return 0
