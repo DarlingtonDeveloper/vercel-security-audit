@@ -17,7 +17,8 @@ class DomainCliReadTests(unittest.TestCase):
         self.map = (REFS / "mcp-check-map.md").read_text()
 
     def test_domains_list_is_a_documented_json_pattern(self):
-        self.assertIn('vercel domains list --scope "$team_slug" --limit 100 --json', self.capabilities)
+        # Run through the bundled reader (#32), which assigns the synthetic aliases.
+        self.assertIn("domains                  vercel domains list --scope <team> --limit 100", self.capabilities)
         self.assertIn("requires explicit team-wide read authorisation", self.capabilities)
         self.assertIn("synthetic aliases", self.capabilities)
 

@@ -116,6 +116,7 @@ Installation does not authenticate your Vercel account or run an audit. Complete
 - references/report-template.md: audience-friendly report and recommendation structure.
 - references/report-design.md: community identity, offline rendering and print checks.
 - skills/vercel-security-audit/scripts/render_report.py: standard-library Markdown-to-HTML renderer.
+- skills/vercel-security-audit/scripts/cli_read.py: standard-library reader that runs one documented Vercel CLI read and prints only allow-listed fields. Every CLI account read goes through it.
 - skills/vercel-security-audit/assets/: print styles, HTML template, pinned Geist fonts and their licence notices.
 - examples/security-audit.md: synthetic layout example, not a real audit.
 - tests/test_skill.py, tests/test_renderer.py and tests/test_install.py: packaging, guardrail, renderer, install-location and public-content checks.

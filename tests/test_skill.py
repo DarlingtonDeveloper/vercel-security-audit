@@ -99,13 +99,18 @@ class PublicSkillTests(unittest.TestCase):
             "firewall bot-management", "firewall traffic list", "firewall alerts list",
             "activity", "webhooks list", "integration list", "domains list",
         )
-        commands = re.findall(r"^vercel (.+)$", text, re.M)
-        self.assertGreaterEqual(len(commands), 12)
-        for command in commands:
+        # Only help and version run directly; account reads run through the bundled reader (#32).
+        direct = re.findall(r"^vercel (.+)$", text, re.M)
+        self.assertGreaterEqual(len(direct), 6)
+        for command in direct:
+            self.assertTrue(command == "--version" or command.endswith(" --help"), command)
+        mapped = re.findall(r"^[a-z-]+ +vercel (.+)$", text, re.M)
+        self.assertGreaterEqual(len(mapped), 14)
+        for command in direct + mapped:
             self.assertTrue(any(command == item or command.startswith(item + " ") for item in allowed), command)
             self.assertNotRegex(command, r"(?:^|\s)(?:--token|-t|--debug|-d|--yes)(?:\s|$)")
             self.assertNotIn("vercel api", command)
-        self.assertIn("before exposing it to the model or saving it", text)
+        self.assertIn("Never run a documented account read directly", text)
 
     def test_report_json_example_is_synthetic_and_valid(self):
         text = (SKILL_DIR / "references" / "report-template.md").read_text()
