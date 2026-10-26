@@ -12,14 +12,15 @@ import os
 from pathlib import Path
 import re
 import sys
-import tempfile
 
 # Importing the renderer must not create or replace cache files in the skill.
 sys.dont_write_bytecode = True
 # Resolve the sibling renderer from this file, not sys.path[0], so the helper
 # also works under python -I (which does not add the script directory).
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from render_report import MAX_BYTES, STATUSES, render_report
+# publish_new is shared with the renderer: one output per invocation avoids
+# multi-file partial publication; distinct paths may branch a revision.
+from render_report import MAX_BYTES, STATUSES, publish_new, render_report
 
 CORE_IDS = tuple(f"{domain}-{index:02}" for domain in
                  ("IAM", "CRE", "DEP", "FWB", "SRC", "SEC", "DOM", "OPS")
@@ -639,26 +640,6 @@ def load_json(path):
                           parse_constant=_invalid_constant)
     except (ValueError, UnicodeError, RecursionError):
         raise ModelError("Invalid JSON input.") from None
-
-
-def publish_new(path, data):
-    """Stage private bytes, then atomically link to a fresh path, never replace.
-
-    One output per invocation avoids multi-file partial publication. Same-path
-    writers race on link(2): exactly one wins. Distinct paths may branch a revision.
-    Requires a trusted private output directory and same-filesystem hard links.
-    """
-    path = Path(path)
-    descriptor, staging = tempfile.mkstemp(prefix=".report-", suffix=".tmp", dir=path.parent)
-    try:
-        with os.fdopen(descriptor, "wb") as stream:
-            os.fchmod(stream.fileno(), 0o600)
-            stream.write(data)
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.link(staging, path)
-    finally:
-        os.unlink(staging)
 
 
 class _Parser(argparse.ArgumentParser):

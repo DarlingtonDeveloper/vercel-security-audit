@@ -10,6 +10,7 @@ import html
 import os
 import re
 import sys
+import tempfile
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -220,6 +221,27 @@ def render_report(source, language="en"):
     return re.sub(r"\{\{([A-Z_]+)\}\}", lambda match: values[match.group(1)], template)
 
 
+def publish_new(path, data):
+    """Stage private bytes, then atomically link to a fresh path, never replace.
+
+    Readers never see a partial file, and a failed write leaves nothing at the
+    destination, so a retry at the same path works. Same-path writers race on
+    link(2): exactly one wins. Requires a trusted private output directory and
+    same-filesystem hard links.
+    """
+    path = Path(path)
+    descriptor, staging = tempfile.mkstemp(prefix=".report-", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            os.fchmod(stream.fileno(), 0o600)
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.link(staging, path)
+    finally:
+        os.unlink(staging)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", type=Path, help="Sanitised Markdown report")
@@ -232,9 +254,7 @@ def main(argv=None):
         if len(data) > MAX_BYTES:
             raise ValueError("Report input exceeds 2 MB.")
         document = render_report(data.decode("utf-8"), args.lang)
-        descriptor = os.open(args.output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
-            stream.write(document)
+        publish_new(args.output, document.encode("utf-8"))
     except (OSError, ValueError, UnicodeError):
         print("Could not render report. Check the sanitised Markdown, bundled assets and new output path. Existing files were preserved.", file=sys.stderr)
         return 1
