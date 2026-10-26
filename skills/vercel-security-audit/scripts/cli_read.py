@@ -224,6 +224,15 @@ def select_domains(data):
     return {"domainsCount": _count(_get(data, "domains")), "domains": domains}
 
 
+def select_team_check(data, slug):
+    """Membership of the one agreed team only; other teams are never printed or counted."""
+    for team in _list(_get(data, "teams")):
+        if _get(team, "slug") == slug:
+            return {"member": True, "plan": _enum(_get(team, "plan")), "current": _bool(_get(team, "current"))}
+    # Absent from this page is only "not a member" when the list is known to be complete.
+    return {"member": False if _get(data, "pagination", "next") is None else UNKNOWN}
+
+
 def team_flags(args):
     return ["--scope", args.scope]
 
@@ -235,6 +244,7 @@ def project_flags(args):
 # name: (argv builder, selector, needs project, paginated)
 READS = {
     "whoami": (lambda a: ["whoami"], select_whoami, False, False),
+    "team-check": (lambda a: ["teams", "list"], None, False, True),
     "security-check": (lambda a: ["security", "check", *(project_flags(a) if a.project else team_flags(a))], select_security_check, False, False),
     "project-ls": (lambda a: ["project", "ls", *team_flags(a)], select_project_ls, False, True),
     "firewall-status": (lambda a: ["firewall", "status", *project_flags(a)], select_firewall_status, True, False),
@@ -303,7 +313,7 @@ def read_version(cli):
 def collect(args):
     builder, selector, _, paginated = READS[args.read]
     data = invoke(args.cli, builder(args))
-    result = selector(data)
+    result = select_team_check(data, args.scope) if args.read == "team-check" else selector(data)
     coverage = {"pages": 1}
     if paginated:
         next_value = _get(data, "pagination", "next")
