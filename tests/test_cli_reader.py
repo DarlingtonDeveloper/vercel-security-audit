@@ -103,6 +103,19 @@ FIXTURES = {
     "domains list --scope example-team --limit 100": {"json": {"pagination": {"count": 2, "next": None, "prev": None},
         "domains": [{"name": CANARY + ".example", "verified": True, "id": CANARY, "nameservers": [CANARY]},
                     {"name": "internal-" + CANARY + ".example", "verified": False, "serviceType": CANARY}]}},
+    # CLI 65.3.1 domains list item shape (#81); hostnames, registrars and creators are canaries.
+    "domains list --scope shape-team --limit 100": {"json": {"pagination": {"count": 3, "next": None, "prev": None},
+        "domains": [
+            {"name": CANARY + ".example", "registrar": CANARY + " Registrar", "nameservers": "external",
+             "expiresAt": 1798761600000, "createdAt": 1735689600000, "creator": CANARY.lower() + "-user"},
+            {"name": "shop." + CANARY.lower() + ".example", "registrar": "Vercel " + CANARY, "nameservers": "vercel",
+             "expiresAt": "2027-01-01T00:00:00Z", "createdAt": "2025-01-01T00:00:00.000+00:00", "creator": CANARY},
+            {"name": CANARY + "-odd.example", "registrar": CANARY, "nameservers": CANARY.lower(),
+             "expiresAt": None, "createdAt": -5, "creator": CANARY}]}},
+    "domains list --scope badtime-team --limit 100": {"json": {"pagination": {"count": 6, "next": None, "prev": None},
+        "domains": [{"nameservers": ["ns1." + CANARY + ".example"], "expiresAt": value, "createdAt": value}
+                    for value in (True, 1.5, "2026-13-01T00:00:00Z", "2026-01-02", "yesterday " + CANARY,
+                                  {"at": CANARY})]}},
     "domains list --scope page-team --limit 100": {"json": {"pagination": {"count": 1, "next": 555, "prev": None},
         "domains": [{"name": CANARY + "-a.example", "verified": True}]}},
     "domains list --scope page-team --limit 100 --next 555": {"json": {"pagination": {"count": 1, "next": None, "prev": 555},
@@ -313,11 +326,32 @@ class CLIReaderTests(unittest.TestCase):
         self.assertEqual(self.ok("integrations", *SCOPE)["result"],
                          {"resources": [{"product": "Upstash for Redis", "status": "available", "projectCount": 1}]})
 
-    def test_domains_use_synthetic_aliases_and_boolean_flags_only(self):
+    def test_domains_use_synthetic_aliases_and_keep_boolean_flags(self):
         output = self.ok("domains", *SCOPE)
+        unknown = {"nameservers": "unknown", "expiresAt": "unknown", "createdAt": "unknown"}
         self.assertEqual(output["result"], {"domainsCount": 2, "domains": [
-            {"alias": "domain-1", "flags": {"verified": True}}, {"alias": "domain-2", "flags": {"verified": False}}]})
+            dict(unknown, alias="domain-1", flags={"verified": True}),
+            dict(unknown, alias="domain-2", flags={"verified": False})]})
         self.assertNotIn(".example", json.dumps(output))
+
+    def test_domains_keep_nameservers_and_dates_from_the_cli_shape(self):
+        output = self.ok("domains", "--scope", "shape-team")
+        self.assertEqual(output["result"], {"domainsCount": 3, "domains": [
+            {"alias": "domain-1", "nameservers": "external", "expiresAt": 1798761600000,
+             "createdAt": 1735689600000, "flags": {}},
+            {"alias": "domain-2", "nameservers": "vercel", "expiresAt": "2027-01-01T00:00:00Z",
+             "createdAt": "2025-01-01T00:00:00.000+00:00", "flags": {}},
+            {"alias": "domain-3", "nameservers": "unknown", "expiresAt": "unknown", "createdAt": "unknown", "flags": {}}]})
+        text = json.dumps(output)
+        for withheld in (".example", "Registrar", "Vercel ", "-user", '"name"', '"registrar"', '"creator"'):
+            self.assertNotIn(withheld, text)
+
+    def test_unvalidated_domain_dates_and_nameservers_are_unknown(self):
+        domains = self.ok("domains", "--scope", "badtime-team")["result"]["domains"]
+        self.assertEqual(len(domains), 6)
+        for domain in domains:
+            self.assertEqual({k: domain[k] for k in ("nameservers", "expiresAt", "createdAt")},
+                             {"nameservers": "unknown", "expiresAt": "unknown", "createdAt": "unknown"})
 
     def test_team_check_reports_only_the_agreed_team(self):
         output = self.ok("team-check", *SCOPE)
