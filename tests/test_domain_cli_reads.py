@@ -30,6 +30,11 @@ class DomainCliReadTests(unittest.TestCase):
                 self.assertIn("team-wide authorisation", cli)
                 self.assertIn("pre-exposure selection", cli)
                 self.assertIn("actually returns", cli)
+                # domains list carries no verification or DNS configuration status (#81).
+                self.assertNotIn("verification fields", cli)
+                self.assertNotIn("configuration fields", cli)
+                self.assertIn("nameservers mode", cli)
+                self.assertIn("domains inspect", cli)
 
     def test_certificates_and_environment_stay_unsupported(self):
         self.assertTrue(route(self.map, "DOM-02")["CLI"].startswith("Unsupported"))
