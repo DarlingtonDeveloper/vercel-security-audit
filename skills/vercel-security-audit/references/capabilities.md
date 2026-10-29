@@ -77,6 +77,8 @@ If no acceptable mechanism exists for a check, that does not automatically make 
 
 Every CLI account read goes through the bundled reader, `scripts/cli_read.py` in the installed skill directory. It runs one documented read command as an argument list (no shell), always adds `--json` and `--non-interactive`, keeps the raw output inside its own process and prints only that read's allow-listed fields as JSON. CLI error text is never echoed; failures are reported as fixed kinds such as `permission`, `not_authenticated`, `unknown_command`, `timeout` or `invalid_json`, always with `coverage.complete: false`.
 
+Before every account read other than `version` and `whoami`, the reader confirms the CLI is logged in with a short `whoami` check and stops with `not_authenticated` if it is not, without running the real command. A logged-out CLI can otherwise start a device-login flow even with `--non-interactive` and hang until the timeout. If any read starts that flow anyway, the reader stops the CLI at once and reports `not_authenticated`; the device code and URL never reach its output. `not_authenticated` means the human-login handoff: ask the user to run `vercel login` themselves, then retry. Never start, open or relay a device-login URL or code for them.
+
 Never run a documented account read directly, even for discovery. In agent hosts the CLI defaults to non-interactive mode, and a plain `vercel security check` (no `--json`, no `--findings`) has printed full JSON including finding samples: project names and IDs and environment variable names. Do not pipe a read through your own filter, redirect it, use tee or record a terminal session instead of the reader. Help output is not an account read and may be inspected directly:
 
 ```sh

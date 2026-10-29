@@ -11,6 +11,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 sys.dont_write_bytecode = True
@@ -30,10 +31,19 @@ key = " ".join(a for a in argv if a not in ("--json", "--non-interactive"))
 entry = fixtures.get(key)
 if entry is None:
     sys.stderr.write("Error: no fixture " + key + "\n"); sys.exit(1)
+if "banner" in entry:
+    # A logged-out CLI starting the device-login flow, then waiting.
+    stream = sys.stdout if entry.get("stream") == "stdout" else sys.stderr
+    stream.write(entry["banner"]); stream.flush()
+    import time; time.sleep(60); sys.exit(0)
 if "stderr" in entry:
     sys.stderr.write(entry["stderr"]); sys.exit(entry.get("exit", 1))
 sys.stdout.write(entry["stdout"] if isinstance(entry.get("stdout"), str) else json.dumps(entry["json"]))
+sys.exit(entry.get("exit", 0))
 '''
+LOGIN_BANNER = ("> No existing credentials found. Starting login flow...\n"
+                "> Visit https://vercel.com/oauth/device?user_code=" + CANARY + "\n")
+LOGGED_OUT_WHOAMI = {"stdout": json.dumps({"loggedIn": False, "cliVersion": "65.3.1", "linkedProject": None}), "exit": 1}
 
 SECURITY = {"report": {
     "env-vars-plaintext": {"violationsCount": 2, "totalCount": 9, "sampleType": ["envVar"],
@@ -126,9 +136,9 @@ class CLIReaderTests(unittest.TestCase):
         self.fixtures.write_text(json.dumps(FIXTURES), encoding="utf-8")
         self.log = self.directory / "argv.log"
 
-    def read(self, *args, version=None):
-        if version:
-            data = dict(FIXTURES, **{"--version": version})
+    def read(self, *args, version=None, overrides=None):
+        if version or overrides:
+            data = dict(FIXTURES, **({"--version": version} if version else {}), **(overrides or {}))
             self.fixtures.write_text(json.dumps(data), encoding="utf-8")
         environment = dict(os.environ, FAKE_FIXTURES=str(self.fixtures), FAKE_LOG=str(self.log))
         result = subprocess.run([sys.executable, "-I", "-B", str(READER), *args, "--cli", str(self.cli)],
@@ -303,6 +313,52 @@ class CLIReaderTests(unittest.TestCase):
         output = self.failure("security-check", "--scope", "old-team")
         self.assertEqual(output["failure"], "unknown_command")
         self.assertIn("upgrade the CLI", output["note"])
+
+    def logged_out(self, *args, overrides):
+        started = time.monotonic()
+        result = self.read(*args, overrides=overrides)
+        elapsed = time.monotonic() - started
+        self.assertEqual(result.returncode, 1, result.stdout)
+        output = json.loads(result.stdout)
+        self.assertEqual(output["failure"], "not_authenticated")
+        self.assertFalse(output["coverage"]["complete"])
+        self.assertIn("vercel login", output["note"])
+        self.assertNotIn("oauth/device", result.stdout + result.stderr)
+        self.assertNotIn("user_code", result.stdout + result.stderr)
+        return elapsed
+
+    def test_logged_out_whoami_is_not_authenticated(self):
+        self.assertLess(self.logged_out("whoami", overrides={"whoami": LOGGED_OUT_WHOAMI}), 10)
+
+    def test_logged_out_account_reads_stop_before_the_real_command(self):
+        # The real command would start a device-login flow; it must never run.
+        overrides = {"whoami": LOGGED_OUT_WHOAMI, "teams list": {"banner": LOGIN_BANNER},
+                     "security check --scope example-team": {"banner": LOGIN_BANNER}}
+        for args in (("team-check", *SCOPE), ("security-check", *SCOPE)):
+            self.log.unlink(missing_ok=True)
+            self.assertLess(self.logged_out(*args, overrides=overrides), 20, args)
+            self.assertEqual(self.argv_log(), [["whoami", "--json", "--non-interactive"]], args)
+
+    def test_a_login_flow_that_starts_anyway_is_stopped_at_once(self):
+        for stream in ("stderr", "stdout"):
+            overrides = {"teams list": {"banner": LOGIN_BANNER, "stream": stream}}
+            self.assertLess(self.logged_out("team-check", *SCOPE, overrides=overrides), 20, stream)
+            # The preflight itself hanging on a login flow is caught the same way.
+            overrides = {"whoami": {"banner": LOGIN_BANNER, "stream": stream}}
+            self.assertLess(self.logged_out("project-ls", *SCOPE, overrides=overrides), 20, stream)
+
+    def test_login_handoff_is_documented(self):
+        skill_dir = READER.parents[1]
+        capabilities = (skill_dir / "references" / "capabilities.md").read_text(encoding="utf-8")
+        skill = (skill_dir / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("confirms the CLI is logged in with a short `whoami` check", capabilities)
+        self.assertIn("Never start, open or relay a device-login URL or code", capabilities)
+        self.assertIn("ask them to run `vercel login` themselves", skill)
+
+    def test_account_reads_check_login_first(self):
+        self.ok("project-ls", *SCOPE)
+        self.assertEqual(self.argv_log()[0], ["whoami", "--json", "--non-interactive"])
+        self.assertEqual(self.argv_log()[1][:2], ["project", "ls"])
 
     def test_version_compares_against_minimum_tested(self):
         old = json.loads(self.read("version", version="Vercel CLI 54.18.0").stdout)["result"]

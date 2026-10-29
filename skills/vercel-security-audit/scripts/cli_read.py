@@ -9,12 +9,20 @@ field-selection mechanism for CLI account reads, not a secret scanner.
 """
 import argparse
 import json
+import os
 import re
+import signal
 import subprocess
 import sys
+import threading
+import time
 
 MINIMUM_TESTED_VERSION = (62, 7, 0)
 TIMEOUT_SECONDS = 90
+# Login preflight before every account read: a logged-out CLI must fail fast, not start a device flow.
+AUTH_TIMEOUT_SECONDS = 15
+# Seen when a logged-out CLI starts the device-login flow even with --non-interactive (CLI 65.3.1).
+LOGIN_FLOW_MARKERS = ("starting login flow", "oauth/device", "no existing credentials found")
 MAX_OUTPUT_BYTES = 8_000_000
 # Agreed identifiers only: no leading dash, so they can never become CLI flags.
 IDENTIFIER = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,99}")
@@ -342,23 +350,98 @@ def classify(stderr):
     return "cli_error"
 
 
-def invoke(cli, argv):
+def _login_flow_started(stdout, stderr):
+    """True when the CLI has begun an interactive device login; JSON stdout is never scanned."""
+    if any(marker in bytes(stderr).lower().decode("utf-8", "replace") for marker in LOGIN_FLOW_MARKERS):
+        return True
+    head = bytes(stdout[:4096]).lstrip()
+    if head[:1] in (b"{", b"["):
+        return False
+    return any(marker in head.lower().decode("utf-8", "replace") for marker in LOGIN_FLOW_MARKERS)
+
+
+def _kill(process):
+    if process.poll() is not None:
+        return
     try:
-        process = subprocess.run([cli, *argv, "--json", "--non-interactive"], capture_output=True,
-                                 timeout=TIMEOUT_SECONDS, check=False)
-    except subprocess.TimeoutExpired:
-        raise ReaderError("timeout") from None
+        if os.name == "posix":
+            os.killpg(process.pid, signal.SIGKILL)  # the CLI's own child processes too
+        else:
+            process.kill()
+    except OSError:
+        pass
+    process.wait()
+
+
+def _run(cli, args, timeout):
+    """Run the CLI with no stdin, streaming its output so a login prompt or oversized output stops it early."""
+    try:
+        process = subprocess.Popen([cli, *args], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE, start_new_session=(os.name == "posix"))
     except OSError:
         raise ReaderError("cli_unavailable") from None
-    if process.returncode != 0:
-        raise ReaderError(classify(process.stderr.decode("utf-8", "replace")))
-    if len(process.stdout) > MAX_OUTPUT_BYTES:
-        raise ReaderError("output_too_large")
+    stdout, stderr = bytearray(), bytearray()
+
+    def pump(stream, buffer):
+        for chunk in iter(lambda: stream.read1(65536), b""):
+            buffer.extend(chunk)
+
+    threads = [threading.Thread(target=pump, args=pair, daemon=True)
+               for pair in ((process.stdout, stdout), (process.stderr, stderr))]
+    for thread in threads:
+        thread.start()
+    deadline = time.monotonic() + timeout
     try:
-        return json.loads(process.stdout.decode("utf-8"))
+        while True:
+            exited = process.poll() is not None
+            if exited:
+                for thread in threads:
+                    thread.join(timeout=5)
+            if _login_flow_started(stdout, stderr):
+                # Never wait on, print or relay a device code or URL.
+                raise ReaderError("not_authenticated")
+            if len(stdout) > MAX_OUTPUT_BYTES:
+                raise ReaderError("output_too_large")
+            if exited:
+                return process.returncode, bytes(stdout), bytes(stderr)
+            if time.monotonic() > deadline:
+                raise ReaderError("timeout")
+            time.sleep(0.05)
+    finally:
+        _kill(process)
+        for stream in (process.stdout, process.stderr):
+            stream.close()
+
+
+def _logged_out(data):
+    return isinstance(data, dict) and data.get("loggedIn") is False
+
+
+def invoke(cli, argv, timeout=TIMEOUT_SECONDS):
+    returncode, stdout, stderr = _run(cli, [*argv, "--json", "--non-interactive"], timeout)
+    try:
+        data = json.loads(stdout.decode("utf-8"))
     except (ValueError, UnicodeError, RecursionError):
+        data = None
+        parsed = False
+    else:
+        parsed = True
+    # A logged-out whoami exits 1 with {"loggedIn": false} on stdout and nothing on stderr.
+    if parsed and _logged_out(data):
+        raise ReaderError("not_authenticated")
+    if returncode != 0:
+        raise ReaderError(classify(stderr.decode("utf-8", "replace")))
+    if not parsed:
         # Never treat unparseable output as an empty or final page.
-        raise ReaderError("invalid_json") from None
+        raise ReaderError("invalid_json")
+    return data
+
+
+def require_login(cli):
+    """Confirm the CLI is logged in before an account read, so no device-login flow can start."""
+    data = invoke(cli, ["whoami"], timeout=AUTH_TIMEOUT_SECONDS)
+    if not isinstance(data, dict) or not (data.get("loggedIn") is True or isinstance(data.get("username"), str)):
+        raise ReaderError("not_authenticated")
 
 
 def read_version(cli):
@@ -419,6 +502,8 @@ def combine(read, pages, slug):
 
 def collect(args):
     builder, selector, _, paginated = READS[args.read]
+    if args.read != "whoami":
+        require_login(args.cli)
     if not paginated:
         data = invoke(args.cli, builder(args))
         return selector(data), {"pages": 1, "endOfList": "not_paginated", "complete": UNKNOWN}
@@ -506,6 +591,8 @@ def main(argv=None):
         output.update(ok=False, failure=error.kind, coverage={"complete": False})
         if error.kind == "unknown_command":
             output["note"] = "Record a capability gap with an 'upgrade the CLI' note; do not retry or guess equivalent commands."
+        elif error.kind == "not_authenticated":
+            output["note"] = "Ask the user to run 'vercel login' themselves, then retry; never start, open or relay a device-login URL or code."
         print(json.dumps(output, indent=2, sort_keys=True))
         return 1
     print(json.dumps(output, indent=2, sort_keys=True))
