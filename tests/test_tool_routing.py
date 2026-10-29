@@ -63,6 +63,27 @@ class ToolRoutingTests(unittest.TestCase):
         self.assertIn("mcp-check-map.md", routing)
         self.assertLess(routing.index("authenticated MCP"), routing.index("Vercel CLI"))
 
+    def test_security_check_baseline_runs_before_per_check_routing_and_browser(self):
+        skill = (SKILL / "SKILL.md").read_text()
+        self.assertNotIn("only as an available fallback", skill)
+        step2 = skill.split("### 2.", 1)[1].split("### 3.", 1)[0]
+        baseline = step2.index("#### Security check baseline")
+        routing = step2.index("#### Per-check routing")
+        self.assertLess(baseline, routing)
+        # The baseline (step 2) comes before any browser navigation (step 3).
+        self.assertLess(skill.index("#### Security check baseline"), skill.index("### 3."))
+        text = step2[baseline:routing]
+        for phrase in ("when the CLI route is in use", "`--scope <team>` when team-wide reads are authorised",
+                       "otherwise with `--project` for each agreed project only",
+                       "conservative productResult rules", "do not invent slugs",
+                       "reuse that evidence when routing those IDs",
+                       "does not replace review of the subsettings", "upgrade the CLI"):
+            self.assertIn(phrase, text)
+        # Connector-first routing is unchanged.
+        self.assertIn("authenticated MCP first where verified safe", step2[routing:])
+        self.assertIn("Security check baseline: when the CLI route is in use", self.text)
+        self.assertIn("team-wide only with team-wide read authorisation", self.text)
+
     def test_sharing_inventory_cannot_be_reconstructed_from_events(self):
         route = self.routes["DEP-02"]
         self.assertIn("current-state read", route["MCP"])

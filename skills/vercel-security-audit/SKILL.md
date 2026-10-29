@@ -71,7 +71,15 @@ Completion: record the approved scope, all four optional-scope decisions and nam
 
 ### 2. Inventory and run product checks
 
-Read the complete [checklist](references/checklist.md). Route every core and separately authorised optional ID through the per-check map: authenticated MCP first where verified safe, documented CLI fallback where available, then safe browser evidence or an explicit gap. Use the reader's `security-check` read (`vercel security check`) only as an available fallback after inspecting current help. Read actual product check names and counts and map them with the [conservative productResult rules](references/capabilities.md#important-distinctions); do not invent slugs or equivalents. Passing is bounded to the returned product check, inspected subsetting and explicit scope, not the whole checklist ID or team.
+Read the complete [checklist](references/checklist.md).
+
+#### Security check baseline
+
+Before per-check routing, take one security check baseline when the CLI route is in use (see [routing](references/capabilities.md#routing)) and current help shows the `security` command. Run the reader's `security-check` read (`vercel security check`) once: with `--scope <team>` when team-wide reads are authorised, otherwise with `--project` for each agreed project only. It is official, structured and scoped, so it informs which checks still need other routes. Read actual product check names and counts and map them with the [conservative productResult rules](references/capabilities.md#important-distinctions); do not invent slugs or equivalents. Record which checklist IDs the baseline gave evidence for, and its scope, and reuse that evidence when routing those IDs instead of collecting it again. The baseline does not replace review of the subsettings a product check does not test. If the `security` command is missing, record a capability gap with an "upgrade the CLI" note and continue with per-check routing.
+
+#### Per-check routing
+
+Route every core and separately authorised optional ID through the per-check map: authenticated MCP first where verified safe, documented CLI fallback where available, then safe browser evidence or an explicit gap. Passing is bounded to the returned product check, inspected subsetting and explicit scope, not the whole checklist ID or team.
 
 Account for pagination and finding limits using [pagination and bounded collection](references/capabilities.md#pagination-and-bounded-collection). Record per-source/feed windows, totals, received/inspected counts, caps, truncation, cursor/end knowledge and missing/failed reads with retry outcomes for the report's Coverage limits block. Product summary counts and the individually inspected findings are different coverage measures. Muted and unavailable product checks are never passing: the reader reports them as `muted` or `unavailable`, and where the CLI omits muted fields, muted state is `unknown`. Confirm muted findings and their stated reason in the dashboard or with the owner, without muting or unmuting anything.
 
