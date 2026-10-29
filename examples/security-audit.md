@@ -47,7 +47,9 @@ Optional checks, kept separate from the 24 core checks:
 Most of the example team's safeguards are in good shape. Two changes would help most: turning on two-factor sign-in for everyone, and limiting who can open review deployments. We also need to confirm who receives incident alerts.
 
 - Scope: the `example-team` team and its two projects, `example-site` and `example-portal`, for live and review deployments.
-- Example window: 25 Oct 2026, 13:00-13:30 local time (CET, Europe/Paris; 12:00-12:30 UTC). This is not an actual collection timestamp.
+- Times shown in: Europe/Paris, the reader's time zone agreed at scope.
+- Review window (stated): 25 Oct 2026, 13:00-13:30 local time (CET, Europe/Paris; 12:00-12:30 UTC). This is an example, not an actual collection timestamp.
+- Evidence collected between (from observations): none; synthetic fixtures only, so no observations were logged.
 - Method: synthetic fixtures only. No account or application was accessed.
 - Changes made: none. The recommendations are proposed actions, not completed work.
 - Core checks (24): 12 satisfactory, 2 action recommended, 6 need confirmation, 3 not reviewed, 1 not applicable.
