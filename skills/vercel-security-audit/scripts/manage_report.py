@@ -95,6 +95,21 @@ def local_zone():
     return None, None
 
 
+def reader_zone(name):
+    """Load an IANA zone name recorded as review_summary.time_zone, or None.
+
+    Only exact names listed by this host's time zone database are accepted,
+    so spelling cannot depend on a case-insensitive file system.
+    """
+    try:
+        from zoneinfo import ZoneInfo, available_timezones
+        if name not in available_timezones():
+            return None
+        return ZoneInfo(name)
+    except (ImportError, ValueError, OSError, KeyError):
+        return None
+
+
 def _clock(moment, with_date):
     text = f"{moment.hour:02}:{moment.minute:02}"
     return f"{moment.day} {MONTHS[moment.month - 1]} {moment.year}, {text}" if with_date else text
@@ -403,9 +418,14 @@ def validate_report(report):
         _text(scope[key])
     decisions = _validate_consent(scope["optional_consent"])
     summary = report["review_summary"]
-    _object(summary, SUMMARY_TEXT + ("confirmed_strengths", "initial_priorities"), ("owner_accepted",))
+    _object(summary, SUMMARY_TEXT + ("confirmed_strengths", "initial_priorities"), ("owner_accepted", "time_zone"))
     for key in SUMMARY_TEXT:
         _text(summary[key])
+    if "time_zone" in summary:
+        _require(type(summary["time_zone"]) is str and len(summary["time_zone"]) <= 64
+                 and reader_zone(summary["time_zone"]) is not None,
+                 "review_summary.time_zone must be an IANA time zone name, such as Europe/London, "
+                 "that this host's time zone database lists; omit it to use the agent host's zone.")
     _texts(summary["confirmed_strengths"])
     _texts(summary["initial_priorities"], maximum=3)
     _object(report["follow_up"], FOLLOW_UP_TEXT)
@@ -486,8 +506,11 @@ def _validate_accepted(records, checks, evidence_by_id, recommendations):
         _require(record["check_id"] not in recommended, "Owner-accepted checks cannot have recommendations.")
 
 
-def new_report(scope_alias, title):
-    """Start an unreviewed draft; creation is not evidence collection or consent."""
+def new_report(scope_alias, title, time_zone=None):
+    """Start an unreviewed draft; creation is not evidence collection or consent.
+
+    time_zone: the reader's IANA zone name agreed at scope, or None for the host's.
+    """
     report = {
         "schema_version": 1, "revision": 1, "scope_alias": scope_alias, "title": title,
         "scope": {key: "Not reviewed; owner confirmation required." for key in SCOPE_TEXT},
@@ -506,6 +529,8 @@ def new_report(scope_alias, title):
     report["scope"]["source_application_review"] = "Not authorized; not reviewed."
     report["scope"]["limitations"] = "No collection recorded; coverage is unknown. No feeds recorded does not establish completeness."
     report["review_summary"].update(confirmed_strengths=[], initial_priorities=[])
+    if time_zone is not None:
+        report["review_summary"]["time_zone"] = time_zone
     validate_report(report)
     return report
 
@@ -677,22 +702,86 @@ def _matrix_lines(report, checks):
     return lines
 
 
-def _evidence_window(report, zone, key):
+_DATE = r"(\d{1,2}) (" + "|".join(MONTHS) + r") (\d{4}), (\d{2}):(\d{2})"
+_CLOCK = r"(\d{2}):(\d{2})"
+
+
+def _stated_window(text):
+    """UTC (start, end) from the UTC part of a friendly window, or None.
+
+    Reads only the form friendly_window writes, e.g. '...; 12:44-13:40 UTC)' or
+    '26 Oct 2026, 12:44-13:40 UTC (local time unavailable)'. Anything else is
+    not parsed, so no overlap check is made. end is the last instant of its minute.
+    """
+    match = (re.search(r"; ([^;()]+) UTC\)$", text)
+             or re.fullmatch(r"([^;()]+) UTC \(local time unavailable\)", text))
+    if not match:
+        return None
+    part = match.group(1)
+
+    def moment(day, month, year, hour, minute):
+        return datetime(int(year), MONTHS.index(month) + 1, int(day), int(hour), int(minute), tzinfo=timezone.utc)
+    try:
+        both = re.fullmatch(_DATE + " - " + _DATE, part)
+        if both:
+            values = both.groups()
+            return moment(*values[:5]), moment(*values[5:]).replace(second=59, microsecond=999999)
+        dated = re.fullmatch(_DATE + "(?:-" + _CLOCK + ")?", part)
+        if not dated:
+            # Undated UTC part: friendly_window omits it only when the local date is the UTC date.
+            lead = re.match(_DATE, text)
+            dated = lead and re.fullmatch(_CLOCK + "(?:-" + _CLOCK + ")?", part)
+            if not dated:
+                return None
+            values = lead.groups()[:3] + dated.groups()
+        else:
+            values = dated.groups()
+        start = moment(*values[:5])
+        end = moment(*values[:3], *values[5:]) if values[5] is not None else start
+        return (start, end.replace(second=59, microsecond=999999)) if start <= end else None
+    except ValueError:
+        return None
+
+
+def _time_lines(report, zone, key, source):
+    """Summary time lines: zone used, stated review window, evidence span, overlap flag."""
+    summary = report["review_summary"]
+    if source == "reader":
+        zone_text = f"{key}, the reader's time zone agreed at scope."
+    elif key:
+        zone_text = f"the agent host's time zone ({key}); no reader time zone was recorded."
+    elif zone is not None:
+        zone_text = "the agent host's time zone (named by its UTC offset below); no reader time zone was recorded."
+    else:
+        zone_text = "the agent host's local time zone (name unavailable); no reader time zone was recorded."
+    lines = ["- Times shown in: " + zone_text, "- Review window (stated): " + summary["reviewed_at"]]
     times = [_utc(entry["observed_at"]) for check in report["checks"] for entry in check["evidence_log"]]
     if not times:
-        return "- Evidence recorded: no observations logged yet."
-    return ("- Evidence recorded: " + friendly_window(min(times), max(times), zone, key)
-            + ", first to last logged observation. Exact UTC times are in the appendix.")
+        return lines + ["- Evidence collected between (from observations): no observations logged yet."]
+    first, last = min(times), max(times)
+    lines.append("- Evidence collected between (from observations): " + friendly_window(first, last, zone, key)
+                 + ", first to last logged observation. Exact UTC times are in the appendix.")
+    stated = _stated_window(summary["reviewed_at"])
+    if stated and (last < stated[0] or first > stated[1]):
+        lines.append("- Time check: the stated review window and the logged observation times do not overlap. "
+                     "Correct the review window or explain the difference before sharing.")
+    return lines
 
 
 def build_markdown(report, zone=None):
     """Build readable guided Markdown; author text is never a template or code.
 
-    zone: optional tzinfo for the summary's friendly times; default is the host's.
+    Summary times use review_summary.time_zone when recorded. Otherwise they use
+    zone (an optional tzinfo standing in for the host's) or the host's own zone.
     """
     counts = build_summary(report)
-    key = getattr(zone, "key", None)
-    if zone is None:
+    recorded = report["review_summary"].get("time_zone")
+    source = "host"
+    if recorded is not None and reader_zone(recorded) is not None:
+        zone, key, source = reader_zone(recorded), recorded, "reader"
+    elif zone is not None:
+        key = getattr(zone, "key", None)
+    else:
         zone, key = local_zone()
     summary, scope = report["review_summary"], report["scope"]
     checks = {check["id"]: check for check in report["checks"]}
@@ -701,7 +790,7 @@ def build_markdown(report, zone=None):
     lines += _matrix_lines(report, checks)
     lines += ["## Review summary", "",
              f"- Revision: {report['revision']}", f"- Scope alias: {report['scope_alias']}",
-             "- Reviewed at: " + summary["reviewed_at"], _evidence_window(report, zone, key),
+             *_time_lines(report, zone, key, source),
              "- Method: " + summary["method"],
              "- Overall takeaway: " + summary["overall_takeaway"]]
     for group, total in (("core", 24), ("optional", 4)):
@@ -806,6 +895,7 @@ def main(argv=None):
     initialize = commands.add_parser("init", help="Create an unreviewed version-1 draft")
     initialize.add_argument("--scope-alias", required=True)
     initialize.add_argument("--title", required=True)
+    initialize.add_argument("--time-zone", help="Reader's IANA time zone agreed at scope, e.g. Europe/London")
     initialize.add_argument("-o", "--output", required=True, type=Path)
     for name in ("validate", "append", "build", "export-summary"):
         command = commands.add_parser(name)
@@ -823,7 +913,7 @@ def main(argv=None):
     role = "source file"
     try:
         if args.command == "init":
-            data = json_bytes(new_report(args.scope_alias, args.title))
+            data = json_bytes(new_report(args.scope_alias, args.title, args.time_zone))
         else:
             report = load_json(args.source)
             validate_report(report)
