@@ -23,10 +23,16 @@ Run a point-in-time, read-only configuration review of the user's authorised Ver
 
 Before account reads, resolve the directory containing this loaded SKILL.md from the host's actual skill location, following symlinks where necessary. Resolve references/, scripts/ and assets/ relative to that directory, not the current project or working directory. If the host does not expose the installed location, ask for it rather than guessing a loader path.
 
-At startup, confirm that all four essential references are present and readable, including for Markdown-only audits. Do not read them in full yet: users should not wait for long reference reads before being asked anything. Read each one in full at the step that needs it, as listed in the process below.
+At startup, confirm that every essential reference below is present and readable, including for Markdown-only audits. These are all the references the process links to, so a broken install is caught before account reads rather than mid-audit. Do not read them in full yet: users should not wait for long reference reads before being asked anything. Read each one in full at the step that needs it, as listed in the process below.
 
 - [Capabilities](references/capabilities.md).
 - [Checklist](references/checklist.md).
+- [Preflight and collection plan](references/collection-plan.md).
+- [MCP check map](references/mcp-check-map.md).
+- [MCP boundary](references/mcp-boundary.md).
+- [Browser evidence safety](references/browser-evidence.md).
+- [Evidence assessment](references/evidence-assessment.md).
+- [Report model](references/report-model.md).
 - [Report template](references/report-template.md).
 - [Report design](references/report-design.md).
 

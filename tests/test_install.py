@@ -53,16 +53,19 @@ class InstallIntegrityTests(unittest.TestCase):
         self.assertLess(text.index(heading), text.index("## Process\n"))
         return text.split(heading, 1)[1].split("\n## ", 1)[0]
 
-    def test_startup_reads_all_four_essential_references_before_account_reads(self):
+    def test_startup_checks_every_linked_reference_before_account_reads(self):
         startup = self.startup()
-        references = set(re.findall(r"\]\((references/[^)]+)\)", startup))
-        self.assertEqual(references, {
-            "references/capabilities.md", "references/checklist.md",
-            "references/report-template.md", "references/report-design.md",
-        })
+        references = set(re.findall(r"\]\((references/[^)#]+)", startup))
+        # Every reference the process links must be in the startup check, so the two cannot drift (#91).
+        text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        linked = set(re.findall(r"\]\((references/[^)#]+)", text))
+        self.assertEqual(linked - references, set(), "SKILL.md links references the startup check does not cover")
+        # And every bundled reference is linked, so none is shipped but never checked.
+        bundled = {f"references/{path.name}" for path in (SKILL_DIR / "references").glob("*.md")}
+        self.assertEqual(references, bundled)
         for reference in references:
             self.assertTrue((SKILL_DIR / reference).is_file(), reference)
-        for instruction in ("confirm that all four essential references are present and readable", "missing or unreadable",
+        for instruction in ("confirm that every essential reference below is present and readable", "missing or unreadable",
                             "stop before account reads", "Installation integrity error",
                             "complete skill directory", "host's actual skill location",
                             "not the current project or working directory"):

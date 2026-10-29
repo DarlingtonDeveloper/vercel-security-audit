@@ -87,7 +87,7 @@ test ! -e "$skill_library/vercel-security-audit" &&
 
 Use the host's documented library registration/reload procedure, then confirm it loads that directory's SKILL.md and can read its sibling helpers. A directory elsewhere on disk is not automatically discovered by every host. Resolve helper paths from the installed skill directory (following any host-created symlink), never from the audit project's working directory.
 
-Startup must read all four references. Missing essential references produce an installation integrity error before account reads: reinstall or recopy the complete bundle. Missing renderer/assets/fonts or export tools only disable styled HTML/PDF export; warn and retain the Markdown report, without failing the audit or installing packages. Python and a report-export browser are optional, not Markdown-only prerequisites.
+Startup confirms that every essential reference (all ten in `references/`, the ones the process links to) is present, without reading them in full until the step that needs each one. Missing essential references produce an installation integrity error before account reads: reinstall or recopy the complete bundle. Missing renderer/assets/fonts or export tools only disable styled HTML/PDF export; warn and retain the Markdown report, without failing the audit or installing packages. Python and a report-export browser are optional, not Markdown-only prerequisites.
 
 ### Vercel tools
 
