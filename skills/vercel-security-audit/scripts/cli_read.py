@@ -43,9 +43,9 @@ UNKNOWN = "unknown"
 class ReaderError(Exception):
     """A fixed, value-free failure kind; never carries CLI output."""
 
-    def __init__(self, kind):
+    def __init__(self, kind, coverage=None):
         super().__init__(kind)
-        self.kind = kind
+        self.kind, self.coverage = kind, coverage
 
 
 # --- small, defensive accessors: missing or mistyped fields are unknown, never zero.
@@ -543,10 +543,19 @@ def combine(read, pages, slug):
     return selected[0]
 
 
+def _no_pages(error):
+    """A paginated read that failed before its first page: same coverage shape as a later failure."""
+    error.coverage = {"pages": 0, "complete": False, "stoppedBecause": error.kind}
+    return error
+
+
 def collect(args):
     builder, selector, _, paginated = READS[args.read]
     if args.read != "whoami":
-        require_login()
+        try:
+            require_login()
+        except ReaderError as error:
+            raise (_no_pages(error) if paginated else error) from None
     if not paginated:
         data = invoke(builder(args))
         return selector(data), {"pages": 1, "endOfList": "not_paginated", "complete": UNKNOWN}
@@ -557,12 +566,17 @@ def collect(args):
             data = invoke(argv)
         except ReaderError as error:
             if not pages:
-                raise
+                raise _no_pages(error) from None
             failure = error.kind  # never treated as end-of-list
             break
         pages.append(data)
         if args.read == "team-check" and select_team_check(data, args.scope)["member"] is True:
             end = "not_needed"
+            break
+        if isinstance(data, dict) and "pagination" not in data:
+            # No pagination block at all (unverified for activity): keep the data, but the end is
+            # not reported, so it is never complete. A block with a bad cursor is still invalid_cursor.
+            end = "not_reported"
             break
         next_value = _get(data, "pagination", "next")
         if next_value is None:
@@ -583,8 +597,10 @@ def collect(args):
     result = combine(args.read, pages, args.scope)
     if args.read == "team-check" and result is None:
         result = {"member": False if end == "known" else UNKNOWN}
-    complete = end in ("known", "not_needed")
+    complete = UNKNOWN if end == "not_reported" else end in ("known", "not_needed")
     coverage = {"pages": len(pages), "endOfList": end if end != UNKNOWN else "not_reached", "complete": complete}
+    if end == "not_reported":
+        coverage["reason"] = "no_pagination_block"
     if failure:
         coverage["stoppedBecause"] = failure
         raise PartialRead(failure, result, coverage)
@@ -630,7 +646,7 @@ def main(argv=None):
         print(json.dumps(output, indent=2, sort_keys=True))
         return 1
     except ReaderError as error:
-        output.update(ok=False, failure=error.kind, coverage={"complete": False})
+        output.update(ok=False, failure=error.kind, coverage=error.coverage or {"complete": False})
         if error.kind == "unknown_command":
             output["note"] = "Record a capability gap with an 'upgrade the CLI' note; do not retry or guess equivalent commands."
         elif error.kind == "not_authenticated":
