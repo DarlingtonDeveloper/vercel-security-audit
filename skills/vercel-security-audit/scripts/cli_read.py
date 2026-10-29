@@ -292,13 +292,37 @@ def select_integrations(data):
                            "projectCount": _count(_get(r, "projects"))} for r in _list(_get(data, "resources"))]}
 
 
+# Strict ISO 8601 UTC-or-offset timestamp; anything looser is withheld as unknown.
+ISO_TIMESTAMP = re.compile(r"[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])"
+                           r"T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\.[0-9]{1,9})?"
+                           r"(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])")
+NAMESERVERS = ("external", "vercel")
+
+
+def _timestamp(value):
+    """Epoch milliseconds (non-negative int) or a strict ISO 8601 string; anything else, null included, is unknown."""
+    if type(value) is int and value >= 0:
+        return value
+    return value if isinstance(value, str) and ISO_TIMESTAMP.fullmatch(value) else UNKNOWN
+
+
 def select_domains(data):
-    """Synthetic aliases assigned here; hostnames never leave the reader."""
+    """Synthetic aliases assigned here; hostnames, registrars and creators never leave the reader.
+
+    CLI list items (65.3.1 per #81, and the 62.7.0 source) are {name, registrar, nameservers,
+    expiresAt, createdAt, creator}: only the nameservers mode and the two dates are kept.
+    Boolean fields are passed through for forward compatibility.
+    """
     domains = []
     for index, item in enumerate(_list(_get(data, "domains")), start=1):
         flags = {key: value for key, value in (item.items() if isinstance(item, dict) else ())
                  if type(value) is bool and ENUM.fullmatch(key.lower())}
-        domains.append({"alias": f"domain-{index}", "flags": flags})
+        nameservers = _get(item, "nameservers")
+        domains.append({"alias": f"domain-{index}",
+                        "nameservers": nameservers if nameservers in NAMESERVERS else UNKNOWN,
+                        "expiresAt": _timestamp(_get(item, "expiresAt")),
+                        "createdAt": _timestamp(_get(item, "createdAt")),
+                        "flags": flags})
     return {"domainsCount": _count(_get(data, "domains")), "domains": domains}
 
 
