@@ -118,6 +118,23 @@ FIXTURES = {
     "project ls --scope loop-team": {"json": dict(PROJECTS, pagination={"count": 1, "next": 333, "prev": None})},
     "project ls --scope loop-team --next 333": {"json": dict(PROJECTS, pagination={"count": 1, "next": 333, "prev": 1})},
     "project ls --scope nopage-team": {"json": {"projects": PROJECTS["projects"]}},
+    # A pagination block that is present but malformed stays invalid_cursor (#84).
+    "project ls --scope emptyblock-team": {"json": dict(PROJECTS, pagination={"count": 1})},
+    "project ls --scope nullblock-team": {"json": dict(PROJECTS, pagination=None)},
+    "project ls --scope badcursor-team": {"json": dict(PROJECTS, pagination={"next": "../" + CANARY})},
+    "project ls --scope halfpage-team": {"json": dict(PROJECTS, pagination={"count": 1, "next": 444, "prev": None})},
+    "project ls --scope halfpage-team --next 444": {"json": {"projects": [dict(PROJECTS["projects"][0], id="prj_2")]}},
+    # Activity with no pagination block at all: the shape is unverified, so the end is not reported.
+    "activity --scope example-team --all --since 24h --limit 100": {"json": {
+        "scope": {"teamSlug": CANARY.lower()},
+        "events": [{"type": "project-created", "createdAt": 3, "text": CANARY},
+                   {"type": "project-created", "createdAt": 2, "text": CANARY},
+                   {"type": "team-member-joined", "createdAt": 1, "user": {"email": CANARY}}]}},
+    # The CLI 62.7.0 source shape: pagination.next is the last event's createdAt - 1, or null.
+    "activity --scope example-team --all --since 30d --limit 100": {"json": {
+        "events": [{"type": "project-created", "createdAt": 10}], "pagination": {"next": 9}}},
+    "activity --scope example-team --all --since 30d --limit 100 --next 9": {"json": {
+        "events": [{"type": "deployment", "createdAt": 8}], "pagination": {"next": None}}},
     # Shapes the CLI 65.3.1 statusOf reads (#77): no access and muted must never pass.
     "security check --scope muted-team": {"json": {"posture": {"mutedCount": 3}, "report": {
         "members-no-mfa": {"unavailable": True, "unavailableReason": "insufficient-permissions", "violationsCount": 0},
@@ -332,13 +349,41 @@ class CLIReaderTests(unittest.TestCase):
                                               "stoppedBecause": "invalid_json"})
         self.assertEqual(len(output["partialResult"]["projects"]), 1)
 
-    def test_repeated_cursor_page_cap_and_missing_pagination_are_incomplete(self):
+    def test_repeated_cursor_page_cap_and_malformed_pagination_are_incomplete(self):
         self.assertEqual(self.failure("project-ls", "--scope", "loop-team")["failure"], "repeated_cursor")
         capped = self.failure("project-ls", "--scope", "page-team", "--max-pages", "1")
         self.assertEqual(capped["failure"], "page_cap_reached")
         self.assertEqual(capped["coverage"]["pages"], 1)
-        self.assertEqual(self.failure("project-ls", "--scope", "nopage-team")["failure"], "invalid_cursor")
+        for scope in ("emptyblock-team", "nullblock-team", "badcursor-team"):
+            output = self.failure("project-ls", "--scope", scope)
+            self.assertEqual(output["failure"], "invalid_cursor", scope)
+            self.assertEqual(output["coverage"]["stoppedBecause"], "invalid_cursor", scope)
         self.assertEqual(self.read("project-ls", "--scope", "page-team", "--max-pages", "0").returncode, 2)
+
+    def test_missing_pagination_block_returns_data_with_end_not_reported(self):
+        not_reported = {"endOfList": "not_reported", "complete": "unknown", "reason": "no_pagination_block"}
+        output = self.ok("activity", *SCOPE)
+        self.assertEqual(output["result"], {"eventsCount": 3, "eventTypes": {"project-created": 2, "team-member-joined": 1}})
+        self.assertEqual(output["coverage"], dict(not_reported, pages=1))
+        self.assertEqual(self.ok("project-ls", "--scope", "nopage-team")["coverage"], dict(not_reported, pages=1))
+        later = self.ok("project-ls", "--scope", "halfpage-team")
+        self.assertEqual([p["id"] for p in later["result"]["projects"]], ["prj_1", "prj_2"])
+        self.assertEqual(later["coverage"], dict(not_reported, pages=2))
+
+    def test_activity_follows_the_numeric_cursor_to_an_explicit_end(self):
+        output = self.ok("activity", *SCOPE, "--since", "30d")
+        self.assertEqual(output["result"], {"eventsCount": 2, "eventTypes": {"project-created": 1, "deployment": 1}})
+        self.assertEqual(output["coverage"], {"pages": 2, "endOfList": "known", "complete": True})
+
+    def test_page_one_failures_carry_coverage(self):
+        output = self.failure("activity", *SCOPE, "--since", "7d")
+        self.assertEqual(output["failure"], "permission")
+        self.assertEqual(output["coverage"], {"pages": 0, "complete": False, "stoppedBecause": "permission"})
+        self.assertNotIn("partialResult", output)
+        logged_out = json.loads(self.read("domains", *SCOPE, overrides={"whoami": LOGGED_OUT_WHOAMI}).stdout)
+        self.assertEqual(logged_out["coverage"], {"pages": 0, "complete": False, "stoppedBecause": "not_authenticated"})
+        # Reads that are not paginated keep the plain incomplete marker.
+        self.assertEqual(self.failure("webhooks", *SCOPE)["coverage"], {"complete": False})
 
     def test_failures_are_fixed_kinds_without_cli_text(self):
         self.assertEqual(self.failure("webhooks", *SCOPE)["failure"], "invalid_json")
