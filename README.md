@@ -142,6 +142,8 @@ The output path must be new. Open the HTML locally and, if needed, use an instal
 python3 -m unittest discover -s tests -v
 ```
 
+The tests need only the Python 3 standard library; the oldest tested version is Python 3.9. GitHub Actions runs the same suite on every pull request and push to `main` (`.github/workflows/tests.yml`), on Python 3.9, 3.13 and 3.14, with read-only permissions and no secrets. Windows is not in the matrix yet: the reader's tests use POSIX fake executables, and HTML publishing has a known Windows issue (#85).
+
 These deterministic tests check packaging and content constraints. They do not execute an agent, authenticate a browser, query Vercel or prove behavioural compliance.
 
 ## Licence
