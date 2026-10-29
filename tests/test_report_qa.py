@@ -36,10 +36,21 @@ MATRIX = ("| Check | Team | `example-site` |\n| --- | --- | --- |\n"
           "| OPS-01 | Status: not_applicable | not_reviewed |\n")
 
 
-def fixture(matrix=False, appendix_matrix=False):
+def full_matrix():
+    """Every check, matching the appendix; two rows use project-level columns."""
+    rows = {topic: f"| {topic} | {STATES[index % 5]} | Team-wide |" for index, topic in enumerate(CORE)}
+    rows["DEP-01"] = "| DEP-01 | By project | action_recommended |"
+    # Least favourable cell wins: not_applicable plus action_recommended is action_recommended.
+    rows["OPS-01"] = "| OPS-01 | Status: not_applicable | action_recommended |"
+    table = "| Check | Team | `example-site` |\n| --- | --- | --- |\n" + "\n".join(rows.values()) + "\n"
+    table += "\n| Optional check | Team | `example-site` |\n| --- | --- | --- |\n"
+    return table + "".join(f"| {topic} | not_reviewed | Team-wide |\n" for topic in OPTIONAL)
+
+
+def fixture(matrix=True, appendix_matrix=False):
     source = "# Synthetic QA review\n\n"
     if matrix:
-        source += "## Status at a glance\n\n" + MATRIX + "\n"
+        source += "## Status at a glance\n\n" + full_matrix() + "\n"
     source += "## Summary\n[Docs](https://example.test/docs)\n"
     # A recommendation badge is not an appendix outcome.
     source += "\n## Recommendations\n### Confirm ownership\nStatus: needs_confirmation\n"

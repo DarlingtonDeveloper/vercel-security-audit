@@ -23,6 +23,39 @@ LABELS = {
     "Not reviewed": "not_reviewed",
     "Not applicable": "not_applicable",
 }
+# Least to most favourable; report-template.md defines the same order. Matrix
+# rows with several status cells summarise to their least favourable status.
+STATUS_ORDER = ("action_recommended", "needs_confirmation", "not_reviewed", "satisfactory", "not_applicable")
+MATRIX_MARKERS = ("Team-wide", "By project")
+CHECK_ID = re.compile(r"\b[A-Z]{3}-\d{2}\b")
+
+
+def checklist_groups():
+    checklist = (SKILL / "references" / "checklist.md").read_text(encoding="utf-8")
+    core_text, optional_text = checklist.split("## Optional deeper", 1)
+    groups = {name: set(re.findall(r"^### ([A-Z]{3}-\d{2})", text, re.M))
+              for name, text in (("core", core_text), ("optional", optional_text))}
+    if len(groups["core"]) != 24 or len(groups["optional"]) != 4 or groups["core"] & groups["optional"]:
+        raise ReportError("Bundled checklist IDs are invalid.")
+    return groups
+
+
+class CheckError(ReportError):
+    """A literal rule message naming one bundled checklist ID, and optionally status keys.
+
+    Only values from the bundled checklist and the five status keys are added,
+    so report text can never reach the message; anything else is dropped.
+    """
+
+    def __init__(self, message, check_id, matrix=None, appendix=None):
+        known = set().union(*checklist_groups().values())
+        details = []
+        if check_id in known:
+            details.append("check ID " + check_id)
+        for role, status in (("matrix", matrix), ("appendix", appendix)):
+            if status in STATUS_ORDER:
+                details.append(role + " " + status)
+        super().__init__(message + (" (" + "; ".join(details) + ")." if details else ""))
 
 
 class Node:
@@ -255,12 +288,7 @@ def outcome_badges(node):
 
 
 def check_counts(root):
-    checklist = (SKILL / "references" / "checklist.md").read_text(encoding="utf-8")
-    core_text, optional_text = checklist.split("## Optional deeper", 1)
-    groups = {name: set(re.findall(r"^### ([A-Z]{3}-\d{2})", text, re.M))
-              for name, text in (("core", core_text), ("optional", optional_text))}
-    if len(groups["core"]) != 24 or len(groups["optional"]) != 4 or groups["core"] & groups["optional"]:
-        raise ReportError("Bundled checklist IDs are invalid.")
+    groups = checklist_groups()
     outcomes = {}
     main, = root.find("main")
     appendix = root.find("section", "appendix")
@@ -303,6 +331,76 @@ def check_counts(root):
         counter = Counter(outcomes[topic] for topic in topics)
         counts[name] = {status: counter[status] for status in LABELS.values()}
     return counts, outcomes
+
+
+def matrix_tables(main):
+    """Tables opening the report: directly in main before any section, then in its first section."""
+    tables, children = [], [child for child in main.children if isinstance(child, Node)]
+    for child in children:
+        if child.tag == "section":
+            if "appendix" not in child.attrs.get("class", "").split():
+                tables += [node for node in child.children
+                           if isinstance(node, Node) and "table-wrap" in node.attrs.get("class", "").split()]
+            break
+        if "table-wrap" in child.attrs.get("class", "").split():
+            tables.append(child)
+    return [elements(wrapper)[0] for wrapper in tables]
+
+
+def matrix_cell(cell):
+    """One status key from a badge, or None for Team-wide / By project."""
+    parts = [child for child in cell.children if isinstance(child, Node)]
+    if not parts and cell.text.strip() in MATRIX_MARKERS:
+        return None
+    if (len(parts) != 1 or any(isinstance(child, str) and child.strip() for child in cell.children)
+            or "status-badge" not in parts[0].attrs.get("class", "").split()
+            or parts[0].text.strip() not in LABELS):
+        raise ReportError("Status matrix cells must hold exactly one status key, Team-wide or By project.")
+    return LABELS[parts[0].text.strip()]
+
+
+def check_matrix(root, outcomes):
+    """Each check's status matrix row must summarise to its appendix outcome."""
+    groups = checklist_groups()
+    main, = root.find("main")
+    tables = matrix_tables(main)
+    if not tables:
+        raise ReportError("No status matrix found. Open the report with the status matrix tables, before "
+                          "the review summary and in the same second-level section.")
+    rows = {}
+    for table in tables:
+        head, body = elements(table)
+        table_groups = set()
+        for row in elements(body):
+            cells = elements(row)
+            identifiers = set(CHECK_ID.findall(cells[0].text))
+            if len(identifiers) != 1:
+                raise ReportError("Each status matrix row needs exactly one check ID in its first cell.")
+            identifier, = identifiers
+            group = next((name for name, topics in groups.items() if identifier in topics), None)
+            if group is None:
+                raise ReportError("Status matrix has a row for an ID that is not in the bundled checklist.")
+            if identifier in rows:
+                raise CheckError("Status matrix lists a check more than once.", identifier)
+            statuses = [status for status in map(matrix_cell, cells[1:]) if status is not None]
+            if not statuses:
+                raise CheckError("Status matrix row has no status, only Team-wide or By project.", identifier)
+            rows[identifier] = min(statuses, key=STATUS_ORDER.index)
+            table_groups.add(group)
+        if len(table_groups) > 1:
+            raise ReportError("Optional checks need their own status matrix table, separate from core checks.")
+    for group in ("core", "optional"):
+        for identifier in sorted(groups[group]):
+            if identifier not in rows:
+                raise CheckError("Status matrix is missing a check that the appendix contains.", identifier)
+            matrix, appendix = rows[identifier], outcomes[identifier]
+            if matrix != appendix:
+                if STATUS_ORDER.index(matrix) > STATUS_ORDER.index(appendix):
+                    raise CheckError("Status matrix shows a better result than the appendix.",
+                                     identifier, matrix, appendix)
+                raise CheckError("Status matrix shows a worse result than the appendix.",
+                                 identifier, matrix, appendix)
+    return "matched all 28 checks"
 
 
 def check_summary(summary, counts):
@@ -348,10 +446,11 @@ def main(argv=None):
         root = Document(read_text(args.html)).root
         check_passive(root)
         counts, outcomes = check_counts(root)
+        matrix_parity = check_matrix(root, outcomes)
         if args.expected_summary:
             check_summary(read_json(args.expected_summary), counts)
         evidence_parity = check_evidence(read_json(args.evidence_json), outcomes) if args.evidence_json else "not checked; no evidence JSON supplied"
-        result = {"counts": counts, "summary_parity": "matched" if args.expected_summary else "not checked; no expected summary supplied",
+        result = {"counts": counts, "matrix_parity": matrix_parity, "summary_parity": "matched" if args.expected_summary else "not checked; no expected summary supplied",
                   "evidence_parity": evidence_parity, "passive_html": "matched bundled structural constraints",
                   "visual_qa": "not performed", "network_qa": "structural only; runtime not observed"}
     except ReportError as error:

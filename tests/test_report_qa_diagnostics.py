@@ -21,7 +21,11 @@ OPTIONAL = ["DEP-04", "SRC-04", "SEC-04", "OPS-04"]
 
 
 def source(domain_heading="## Appendix: Identity and access"):
-    text = f"# Synthetic review\n\n## Summary\n{CANARY}\n\n{domain_heading}\n"
+    text = "# Synthetic review\n\n## Status at a glance\n\n| Check | Team |\n| --- | --- |\n"
+    text += "".join(f"| {topic} | not_reviewed |\n" for topic in CORE)
+    text += "\n| Optional check | Team |\n| --- | --- |\n"
+    text += "".join(f"| {topic} | not_reviewed |\n" for topic in OPTIONAL)
+    text += f"\n## Summary\n{CANARY}\n\n{domain_heading}\n"
     for topic in CORE:
         text += f"\n### {topic} - Synthetic check {CANARY}\nStatus: not_reviewed\n"
     text += "\n## Appendix: optional checks\n"

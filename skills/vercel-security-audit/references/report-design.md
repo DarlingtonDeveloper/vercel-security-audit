@@ -111,6 +111,16 @@ Prepare these expected counts independently from the approved source evidence, n
 
 Without an expected-summary file, output says summary parity was not checked. Without evidence JSON, per-check evidence parity is also not checked. A partial source or successful HTML-only check must never be described as full JSON parity. If no structured source exists, compare counts and statuses manually to the Markdown and record JSON comparison as not performed.
 
+### Status matrix comparison
+
+The checker also compares the status matrix with the appendix, which stays the counted outcome. The matrix is every table placed directly in the report body before the first second-level section, together with the tables in that first section when it is not an appendix. Keep the core and optional matrix tables (and any tables split for width or grouped by domain) in that opening position, before the review summary. Tables later in the report, including tables inside appendix records, are neither matrix rows nor outcomes.
+
+- Every matrix body row names exactly one checklist ID in its first cell, and every other cell holds exactly one status key (rendered as its badge) or the words Team-wide or By project. Each row needs at least one status cell.
+- Each of the 28 appendix checks appears in exactly one matrix row, and optional checks sit in their own table. Missing, duplicate, unknown and mixed-group rows fail.
+- A row's matrix status is its least favourable status cell, using the status order in the [report template](report-template.md#status-at-a-glance); Team-wide and By project cells are skipped. That status must equal the check's appendix outcome. A matrix better than the appendix fails, and so does a matrix worse than the appendix, because the appendix outcome must already reflect the least favourable project.
+
+Failures name the rule, the checklist ID and, for a mismatch, the two status keys, for example `Status matrix shows a better result than the appendix. (check ID IAM-02; matrix satisfactory; appendix needs_confirmation).` No other report text is echoed. Success output includes `matrix_parity: matched all 28 checks`. The checker does not verify that Team-wide and By project are used consistently across columns; review that by hand.
+
 ### Passive document and identity checks
 
 The checker accepts only the bundled renderer's passive HTML dialect. It checks balanced tags, unique attributes/IDs, required landmarks, the renderer's exact table shape (wrapped tables directly in the report body, one header row of column headers, body rows of the same width, no other table attributes), resolved same-document links, a deny-by-default CSP before style content, and credential-free user-activated HTTPS links. It rejects scripts (including JSON script elements), event handlers, forms, frames, objects, images, SVG, linked styles, preload/preconnect elements, refresh directives and unexpected attributes. No image or official logo asset is permitted; logo-marked markup is also rejected. Preserve the required community/unofficial header and footer disclosure, non-endorsement and non-certification statements. Do not add an official logo, official sign-off or claim of certification in text either; human review still checks identity and unsupported claims.
