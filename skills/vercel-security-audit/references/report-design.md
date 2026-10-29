@@ -19,7 +19,7 @@ Status labels distinguish Satisfactory, Action recommended, Needs confirmation, 
 
 Resolve the installed skill directory from the host's actual skill location, not the current project. The renderer is scripts/render_report.py inside that directory. It needs Python 3 and only the standard library.
 
-Review the Markdown for secrets and unsupported claims first. The renderer escapes content but is not a secret scanner or evidence validator. Render only a sanitised report to a new path in a private output directory:
+Review the Markdown for secrets and unsupported claims first. The renderer escapes content but is not a secret scanner or evidence validator. Render only a sanitised report to a new path in a local, private output directory, not a shared or network folder:
 
 ```sh
 python3 "$skill_dir/scripts/render_report.py" "$report_md" -o "$report_html"
@@ -33,7 +33,7 @@ Pipe tables are bounded too. A table is a header row immediately followed by a s
 
 The document language defaults to en. Use --lang fr or another valid language tag for translated report content. The template's shell/status labels remain English; full localisation is not implemented. Preserve requested-language Markdown as the source even if styled export is unsuitable.
 
-The renderer refuses existing output files, oversized input, an absent title and unclosed code fences. It writes a new HTML file with mode 0600. It never installs packages, launches a browser, calls a network service or uploads a report.
+The renderer refuses existing output files, oversized input, an absent title and unclosed code fences. It writes a new HTML file with mode 0600 where the platform supports POSIX modes. Where hard links work it stages the file and links it into place; where they do not (some network, FAT/exFAT or container mounts, and Windows) it creates the path exclusively instead, which still never replaces an existing file but can briefly show a partial file to another reader. A failed write leaves nothing at the output path. It never installs packages, launches a browser, calls a network service or uploads a report.
 
 ## Optional PDF: safe print and fallback
 

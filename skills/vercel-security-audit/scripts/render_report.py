@@ -6,6 +6,7 @@ This renderer is not a secret scanner: review and sanitise the source first.
 """
 import argparse
 import base64
+import errno
 import html
 import os
 import re
@@ -314,25 +315,77 @@ def render_report(source, language="en"):
     return re.sub(r"\{\{([A-Z_]+)\}\}", lambda match: values[match.group(1)], template)
 
 
-def publish_new(path, data):
-    """Stage private bytes, then atomically link to a fresh path, never replace.
+# link(2) errors meaning "this filesystem has no hard links here", not "path taken".
+LINK_UNSUPPORTED_ERRNOS = frozenset(
+    getattr(errno, name) for name in ("EPERM", "EXDEV", "ENOTSUP", "EOPNOTSUPP") if hasattr(errno, name))
 
-    Readers never see a partial file, and a failed write leaves nothing at the
-    destination, so a retry at the same path works. Same-path writers race on
-    link(2): exactly one wins. Requires a trusted private output directory and
-    same-filesystem hard links.
+
+def link_unsupported(error):
+    """True when a failed link should fall back to exclusive create.
+
+    An existing target is never a fallback case: it is refused as before.
     """
-    path = Path(path)
+    if isinstance(error, FileExistsError):
+        return False
+    return os.name == "nt" or error.errno in LINK_UNSUPPORTED_ERRNOS
+
+
+def _publish_linked(path, data):
+    """Stage private bytes, then link to the fresh path. False: no hard links."""
     descriptor, staging = tempfile.mkstemp(prefix=".report-", suffix=".tmp", dir=path.parent)
     try:
         with os.fdopen(descriptor, "wb") as stream:
-            os.fchmod(stream.fileno(), 0o600)
+            if hasattr(os, "fchmod"):  # Absent on Windows before Python 3.13.
+                os.fchmod(stream.fileno(), 0o600)
             stream.write(data)
             stream.flush()
             os.fsync(stream.fileno())
-        os.link(staging, path)
+        try:
+            os.link(staging, path)
+        except OSError as error:
+            if link_unsupported(error):
+                return False
+            raise
+        return True
     finally:
         os.unlink(staging)
+
+
+def _publish_exclusive(path, data):
+    """Create the fresh path exclusively; remove only the file this call created."""
+    flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_BINARY", 0)
+    descriptor = os.open(path, flags, 0o600)  # FileExistsError: refused, untouched.
+    try:
+        try:
+            view = memoryview(data)
+            while view:
+                view = view[os.write(descriptor, view):]
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+    except BaseException:
+        os.unlink(path)
+        raise
+
+
+def publish_new(path, data):
+    """Publish bytes to a fresh path, never replacing an existing file.
+
+    Where hard links work, bytes are staged privately and linked into place:
+    readers never see a partial file and same-path writers race on link(2), so
+    exactly one wins. Where the filesystem or platform has no hard links, the
+    file is created with O_CREAT|O_EXCL instead, which still refuses an existing
+    path but is not atomic for concurrent readers. Either way a failed write
+    leaves nothing at the destination, so a retry at the same path works.
+    Requires a trusted, local, private output directory.
+    """
+    path = Path(path)
+    try:
+        if not hasattr(os, "link") or not _publish_linked(path, data):
+            _publish_exclusive(path, data)
+    except (AttributeError, NotImplementedError):
+        # A platform without a needed os primitive: report it, never a traceback.
+        raise ReportError("This platform cannot create a new private output file.") from None
 
 
 def main(argv=None):
