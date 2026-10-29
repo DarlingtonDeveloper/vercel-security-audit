@@ -18,6 +18,10 @@ import threading
 import time
 
 MINIMUM_TESTED_VERSION = (62, 7, 0)
+# Always the `vercel` on PATH, as in the user's shell. There is deliberately no option or
+# variable that points the reader at another executable (#79); tests put a fake `vercel`
+# first on PATH instead.
+CLI = "vercel"
 TIMEOUT_SECONDS = 90
 # Login preflight before every account read: a logged-out CLI must fail fast, not start a device flow.
 AUTH_TIMEOUT_SECONDS = 15
@@ -39,9 +43,9 @@ UNKNOWN = "unknown"
 class ReaderError(Exception):
     """A fixed, value-free failure kind; never carries CLI output."""
 
-    def __init__(self, kind):
+    def __init__(self, kind, coverage=None):
         super().__init__(kind)
-        self.kind = kind
+        self.kind, self.coverage = kind, coverage
 
 
 # --- small, defensive accessors: missing or mistyped fields are unknown, never zero.
@@ -288,13 +292,37 @@ def select_integrations(data):
                            "projectCount": _count(_get(r, "projects"))} for r in _list(_get(data, "resources"))]}
 
 
+# Strict ISO 8601 UTC-or-offset timestamp; anything looser is withheld as unknown.
+ISO_TIMESTAMP = re.compile(r"[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])"
+                           r"T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\.[0-9]{1,9})?"
+                           r"(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])")
+NAMESERVERS = ("external", "vercel")
+
+
+def _timestamp(value):
+    """Epoch milliseconds (non-negative int) or a strict ISO 8601 string; anything else, null included, is unknown."""
+    if type(value) is int and value >= 0:
+        return value
+    return value if isinstance(value, str) and ISO_TIMESTAMP.fullmatch(value) else UNKNOWN
+
+
 def select_domains(data):
-    """Synthetic aliases assigned here; hostnames never leave the reader."""
+    """Synthetic aliases assigned here; hostnames, registrars and creators never leave the reader.
+
+    CLI list items (65.3.1 per #81, and the 62.7.0 source) are {name, registrar, nameservers,
+    expiresAt, createdAt, creator}: only the nameservers mode and the two dates are kept.
+    Boolean fields are passed through for forward compatibility.
+    """
     domains = []
     for index, item in enumerate(_list(_get(data, "domains")), start=1):
         flags = {key: value for key, value in (item.items() if isinstance(item, dict) else ())
                  if type(value) is bool and ENUM.fullmatch(key.lower())}
-        domains.append({"alias": f"domain-{index}", "flags": flags})
+        nameservers = _get(item, "nameservers")
+        domains.append({"alias": f"domain-{index}",
+                        "nameservers": nameservers if nameservers in NAMESERVERS else UNKNOWN,
+                        "expiresAt": _timestamp(_get(item, "expiresAt")),
+                        "createdAt": _timestamp(_get(item, "createdAt")),
+                        "flags": flags})
     return {"domainsCount": _count(_get(data, "domains")), "domains": domains}
 
 
@@ -335,18 +363,57 @@ READS = {
 }
 
 
-def classify(stderr):
-    text = stderr.lower()
-    if "not a valid target directory or subcommand" in text or "unknown command" in text or "unknown subcommand" in text:
-        return "unknown_command"
-    if "personal account as the scope" in text:
-        return "personal_scope_rejected"
-    if "not logged in" in text or "vercel login" in text or "no existing credentials" in text:
-        return "not_authenticated"
-    if "403" in text or "forbidden" in text or "permission" in text or "not authorized" in text:
-        return "permission"
-    if "404" in text or "not found" in text:
-        return "not_found"
+# Agent-mode error payloads carry a machine-readable `reason`. Only these reasons map to a
+# specific kind; every other reason is cli_error. Names taken from the CLI 62.7.0 source
+# (AGENT_REASON and its API-error helpers), not observed from a live failing read.
+AGENT_REASONS = {
+    "permission_denied": "permission",
+    "forbidden": "permission",
+    "scope_not_accessible": "permission",
+    "not_team_member": "permission",
+    "login_required": "not_authenticated",
+    "not_authorized": "not_authenticated",  # the CLI's reason for HTTP 401
+    "not_found": "not_found",
+    "project_not_found": "not_found",
+    "domain_not_found": "not_found",
+    "unknown_command": "unknown_command",
+    "rate_limited": "rate_limited",
+    "payment_required": "plan_required",
+    "plan_upgrade_required": "plan_required",
+}
+# Fallback for plain stderr only: CLI-authored phrases, anchored to a line. API errors end in
+# " (<status>)", optionally followed by a full stop. Bare "403", "404" or "permission" anywhere
+# in a line is never enough, since team and project names can contain them.
+STDERR_RULES = (
+    ("unknown_command", re.compile(r"is not a valid target directory or subcommand\b|^(?:error: )?unknown (?:sub)?command\b", re.M)),
+    ("personal_scope_rejected", re.compile(r"personal account as the scope", re.M)),
+    ("not_authenticated", re.compile(r"^(?:error: )?(?:not logged in|no existing credentials found)\b|\(401\)\.?$", re.M)),
+    ("permission", re.compile(r"^(?:error: )?you (?:do not|don't) have permissions? \b|\(403\)\.?$", re.M)),
+    ("not_found", re.compile(r"\(404\)\.?$", re.M)),
+)
+
+
+def _agent_reason(text):
+    """The `reason` of an agent-mode JSON error payload, or None when the text is not one."""
+    try:
+        data = json.loads(text)
+    except (ValueError, RecursionError):
+        return None
+    if isinstance(data, dict) and "reason" in data:
+        return data["reason"] if isinstance(data["reason"], str) else ""
+    return None
+
+
+def classify(stdout, stderr):
+    """A fixed failure kind; the payload's message, hint, scope and next steps are never used."""
+    for stream in (stdout, stderr):
+        reason = _agent_reason(stream)
+        if reason is not None:
+            return AGENT_REASONS.get(reason.lower(), "cli_error")
+    text = "\n".join(line.strip() for line in stderr.lower().splitlines())
+    for kind, rule in STDERR_RULES:
+        if rule.search(text):
+            return kind
     return "cli_error"
 
 
@@ -373,10 +440,10 @@ def _kill(process):
     process.wait()
 
 
-def _run(cli, args, timeout):
+def _run(args, timeout):
     """Run the CLI with no stdin, streaming its output so a login prompt or oversized output stops it early."""
     try:
-        process = subprocess.Popen([cli, *args], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+        process = subprocess.Popen([CLI, *args], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE, start_new_session=(os.name == "posix"))
     except OSError:
         raise ReaderError("cli_unavailable") from None
@@ -417,8 +484,8 @@ def _logged_out(data):
     return isinstance(data, dict) and data.get("loggedIn") is False
 
 
-def invoke(cli, argv, timeout=TIMEOUT_SECONDS):
-    returncode, stdout, stderr = _run(cli, [*argv, "--json", "--non-interactive"], timeout)
+def invoke(argv, timeout=TIMEOUT_SECONDS):
+    returncode, stdout, stderr = _run([*argv, "--json", "--non-interactive"], timeout)
     try:
         data = json.loads(stdout.decode("utf-8"))
     except (ValueError, UnicodeError, RecursionError):
@@ -430,23 +497,23 @@ def invoke(cli, argv, timeout=TIMEOUT_SECONDS):
     if parsed and _logged_out(data):
         raise ReaderError("not_authenticated")
     if returncode != 0:
-        raise ReaderError(classify(stderr.decode("utf-8", "replace")))
+        raise ReaderError(classify(stdout.decode("utf-8", "replace"), stderr.decode("utf-8", "replace")))
     if not parsed:
         # Never treat unparseable output as an empty or final page.
         raise ReaderError("invalid_json")
     return data
 
 
-def require_login(cli):
+def require_login():
     """Confirm the CLI is logged in before an account read, so no device-login flow can start."""
-    data = invoke(cli, ["whoami"], timeout=AUTH_TIMEOUT_SECONDS)
+    data = invoke(["whoami"], timeout=AUTH_TIMEOUT_SECONDS)
     if not isinstance(data, dict) or not (data.get("loggedIn") is True or isinstance(data.get("username"), str)):
         raise ReaderError("not_authenticated")
 
 
-def read_version(cli):
+def read_version():
     try:
-        process = subprocess.run([cli, "--version"], capture_output=True, timeout=TIMEOUT_SECONDS, check=False)
+        process = subprocess.run([CLI, "--version"], capture_output=True, timeout=TIMEOUT_SECONDS, check=False)
     except (subprocess.TimeoutExpired, OSError):
         raise ReaderError("cli_unavailable") from None
     match = re.search(rb"\b([0-9]{1,4})\.([0-9]{1,4})\.([0-9]{1,4})\b", process.stdout + process.stderr)
@@ -500,26 +567,40 @@ def combine(read, pages, slug):
     return selected[0]
 
 
+def _no_pages(error):
+    """A paginated read that failed before its first page: same coverage shape as a later failure."""
+    error.coverage = {"pages": 0, "complete": False, "stoppedBecause": error.kind}
+    return error
+
+
 def collect(args):
     builder, selector, _, paginated = READS[args.read]
     if args.read != "whoami":
-        require_login(args.cli)
+        try:
+            require_login()
+        except ReaderError as error:
+            raise (_no_pages(error) if paginated else error) from None
     if not paginated:
-        data = invoke(args.cli, builder(args))
+        data = invoke(builder(args))
         return selector(data), {"pages": 1, "endOfList": "not_paginated", "complete": UNKNOWN}
     pages, seen, cursor, end, failure = [], set(), None, UNKNOWN, None
     while True:
         argv = builder(args) + (["--next", str(cursor)] if cursor is not None else [])
         try:
-            data = invoke(args.cli, argv)
+            data = invoke(argv)
         except ReaderError as error:
             if not pages:
-                raise
+                raise _no_pages(error) from None
             failure = error.kind  # never treated as end-of-list
             break
         pages.append(data)
         if args.read == "team-check" and select_team_check(data, args.scope)["member"] is True:
             end = "not_needed"
+            break
+        if isinstance(data, dict) and "pagination" not in data:
+            # No pagination block at all (unverified for activity): keep the data, but the end is
+            # not reported, so it is never complete. A block with a bad cursor is still invalid_cursor.
+            end = "not_reported"
             break
         next_value = _get(data, "pagination", "next")
         if next_value is None:
@@ -540,8 +621,10 @@ def collect(args):
     result = combine(args.read, pages, args.scope)
     if args.read == "team-check" and result is None:
         result = {"member": False if end == "known" else UNKNOWN}
-    complete = end in ("known", "not_needed")
+    complete = UNKNOWN if end == "not_reported" else end in ("known", "not_needed")
     coverage = {"pages": len(pages), "endOfList": end if end != UNKNOWN else "not_reached", "complete": complete}
+    if end == "not_reported":
+        coverage["reason"] = "no_pagination_block"
     if failure:
         coverage["stoppedBecause"] = failure
         raise PartialRead(failure, result, coverage)
@@ -561,7 +644,6 @@ def main(argv=None):
     parser.add_argument("--since", default="24h", help="Window for traffic, alerts and activity, e.g. 24h or 7d")
     parser.add_argument("--max-pages", type=int, default=DEFAULT_MAX_PAGES,
                         help=f"Page cap for paginated reads (1-{HARD_MAX_PAGES}); reaching it is incomplete coverage")
-    parser.add_argument("--cli", default="vercel", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     for value in (args.scope, args.project):
         if value is not None and not IDENTIFIER.fullmatch(value):
@@ -573,7 +655,7 @@ def main(argv=None):
     output = {"read": args.read}
     try:
         if args.read == "version":
-            output.update(ok=True, result=read_version(args.cli))
+            output.update(ok=True, result=read_version())
         else:
             _, _, needs_project, _ = READS[args.read]
             if args.read != "whoami" and not args.scope:
@@ -588,7 +670,7 @@ def main(argv=None):
         print(json.dumps(output, indent=2, sort_keys=True))
         return 1
     except ReaderError as error:
-        output.update(ok=False, failure=error.kind, coverage={"complete": False})
+        output.update(ok=False, failure=error.kind, coverage=error.coverage or {"complete": False})
         if error.kind == "unknown_command":
             output["note"] = "Record a capability gap with an 'upgrade the CLI' note; do not retry or guess equivalent commands."
         elif error.kind == "not_authenticated":

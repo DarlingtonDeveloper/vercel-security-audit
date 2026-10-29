@@ -6,9 +6,11 @@ command is used. Subprocesses are restricted to running the local renderer CLI.
 import base64
 from collections import Counter
 from contextlib import ExitStack
+import errno
 import hashlib
 from html.parser import HTMLParser
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -800,6 +802,120 @@ class RendererPublishTests(unittest.TestCase):
             with self.subTest(target=target):
                 with patch.object(RENDERER.os, target, side_effect=OSError(5, "I/O error")):
                     self.assertEqual(self.main(), 1)
+                self.assert_nothing_published()
+
+
+class RendererPortablePublishTests(unittest.TestCase):
+    """Without hard links or os.fchmod, publish once and still never overwrite (#85)."""
+
+    setUp = RendererPublishTests.setUp
+    assert_nothing_published = RendererPublishTests.assert_nothing_published
+
+    def run_main(self):
+        stderr = io.StringIO()
+        with patch("sys.stdout"), patch("sys.stderr", stderr):
+            code = RENDERER.main([str(self.source), "-o", str(self.output)])
+        self.assertNotIn("Traceback", stderr.getvalue())
+        return code, stderr.getvalue()
+
+    def without_os(self, name):
+        if hasattr(RENDERER.os, name):
+            original = getattr(RENDERER.os, name)
+            delattr(RENDERER.os, name)
+            self.addCleanup(setattr, RENDERER.os, name, original)
+
+    def assert_published_once(self):
+        self.assertEqual(stat.S_IMODE(self.output.stat().st_mode), 0o600)
+        self.assertEqual(self.output.read_text(encoding="utf-8"),
+                         RENDERER.render_report(self.source.read_text(encoding="utf-8")))
+        self.assertEqual({p.name for p in self.directory.iterdir()}, {"synthetic.md", "report.html"})
+
+    def assert_existing_refused(self):
+        original = b"Keep existing output exactly.\x00\xff"
+        self.output.write_bytes(original)
+        code, stderr = self.run_main()
+        self.assertEqual(code, 1)
+        self.assertIn("The output path could not be used (File exists).", stderr)
+        self.assertTrue(stderr.endswith("Existing files were preserved.\n"), stderr)
+        self.assertEqual(self.output.read_bytes(), original)
+        self.assertFalse(list(self.directory.glob(".report-*")))
+
+    def test_link_without_hard_link_support_falls_back_once_and_never_overwrites(self):
+        for name in ("EPERM", "EXDEV", "ENOTSUP", "EOPNOTSUPP"):
+            if not hasattr(errno, name):
+                continue
+            with self.subTest(errno=name):
+                error = OSError(getattr(errno, name), "Hard links unsupported")
+                with patch.object(RENDERER.os, "link", side_effect=error) as link, \
+                        patch.object(RENDERER.os, "open", wraps=os.open) as opened:
+                    code, stderr = self.run_main()
+                    self.assertEqual((code, stderr), (0, ""))
+                    self.assertEqual(link.call_count, 1)
+                    self.assertEqual([c for c in opened.call_args_list if Path(c.args[0]) == self.output],
+                                     [unittest.mock.call(self.output, unittest.mock.ANY, 0o600)])
+                    self.assert_published_once()
+                    self.assert_existing_refused()
+                self.output.unlink()
+
+    def test_missing_os_link_falls_back_and_never_overwrites(self):
+        self.without_os("link")
+        self.assertEqual(self.run_main(), (0, ""))
+        self.assert_published_once()
+        self.assert_existing_refused()
+
+    def test_missing_os_fchmod_still_publishes_privately(self):
+        self.without_os("fchmod")
+        self.assertEqual(self.run_main(), (0, ""))
+        self.assert_published_once()
+        self.assert_existing_refused()
+
+    def test_missing_fchmod_and_hard_links_together_still_publish(self):
+        self.without_os("fchmod")
+        with patch.object(RENDERER.os, "link", side_effect=OSError(errno.EPERM, "Operation not permitted")):
+            self.assertEqual(self.run_main(), (0, ""))
+            self.assert_published_once()
+            self.assert_existing_refused()
+
+    def test_fallback_failed_write_removes_only_its_partial_file_and_retry_succeeds(self):
+        real_write = os.write
+
+        def partial_write(descriptor, data):
+            real_write(descriptor, bytes(data[:100]))
+            raise OSError(errno.ENOSPC, "No space left on device")
+
+        with patch.object(RENDERER.os, "link", side_effect=OSError(errno.EXDEV, "Cross-device link")):
+            with patch.object(RENDERER.os, "write", side_effect=partial_write):
+                code, stderr = self.run_main()
+            self.assertEqual(code, 1)
+            self.assertIn("(No space left on device)", stderr)
+            self.assert_nothing_published()
+            self.assertEqual(self.run_main(), (0, ""))
+        self.assert_published_once()
+
+    def test_other_link_errors_are_not_retried_on_posix(self):
+        with patch.object(RENDERER.os, "name", "posix"):
+            self.assertFalse(RENDERER.link_unsupported(OSError(errno.EIO, "I/O error")))
+            self.assertTrue(RENDERER.link_unsupported(OSError(errno.EPERM, "Operation not permitted")))
+            self.assertFalse(RENDERER.link_unsupported(FileExistsError(errno.EEXIST, "File exists")))
+
+    def test_any_link_error_except_existing_target_falls_back_on_windows(self):
+        # Only the predicate runs under the patched name: pathlib picks its
+        # flavour from os.name, so a full publish cannot be faked here.
+        with patch.object(RENDERER.os, "name", "nt"):
+            self.assertTrue(RENDERER.link_unsupported(OSError(errno.EIO, "I/O error")))
+            self.assertTrue(RENDERER.link_unsupported(OSError(None, "Incorrect function")))
+            self.assertFalse(RENDERER.link_unsupported(FileExistsError(errno.EEXIST, "File exists")))
+
+    def test_missing_platform_primitive_is_a_report_error_without_traceback(self):
+        for target in ("fsync", "open"):
+            with self.subTest(target=target):
+                with patch.object(RENDERER.os, "link", side_effect=OSError(errno.EPERM, "Operation not permitted")), \
+                        patch.object(RENDERER.os, target, side_effect=AttributeError("synthetic")):
+                    code, stderr = self.run_main()
+                self.assertEqual(code, 1)
+                self.assertEqual(stderr, "Could not render report: This platform cannot create a new "
+                                         "private output file. Existing files were preserved.\n")
+                self.assertNotIn("synthetic", stderr)
                 self.assert_nothing_published()
 
 

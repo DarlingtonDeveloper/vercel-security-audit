@@ -128,7 +128,7 @@ Browser entries are fallbacks, not permission to expose sensitive pages. Apply t
 
 ### DOM-01
 - MCP: Conditional domain association metadata; schema must restrict project scope and select aliased association/verification state without DNS credential data.
-- CLI: domains list provides team domain inventory and only the verification fields its JSON actually returns, subject to team-wide authorisation, pre-exposure selection with synthetic aliases and verified pagination; project association needs another route.
+- CLI: domains list provides team domain inventory and, per aliased domain, only what its JSON actually returns and the reader keeps: nameservers mode (external, vercel or unknown), expiresAt and createdAt, subject to team-wide authorisation, pre-exposure selection with synthetic aliases and verified pagination. It returns no verification or DNS configuration status (only the per-domain domains inspect does, and the reader does not wrap it), so verification state and project association need another route.
 - Security Dashboard: Partial/no equivalent verified; no observed check name.
 - Browser: Project/team domain association and verification status; owner confirms control.
 
@@ -140,7 +140,7 @@ Browser entries are fallbacks, not permission to expose sensitive pages. Apply t
 
 ### DOM-03
 - MCP: Conditional domain warning/configuration metadata; schema must select safe warning summaries and alias relationships within scope.
-- CLI: domains list supplies only the per-domain configuration fields its JSON actually returns, subject to team-wide authorisation and pre-exposure selection; warnings and alias/redirect relationships need another route.
+- CLI: domains list supplies no per-domain configuration or warning fields: its JSON actually returns only the nameservers mode, expiresAt and createdAt per aliased domain, subject to team-wide authorisation and pre-exposure selection. DNS configuration status, warnings and alias/redirect relationships need another route; domains inspect is not wrapped by the reader.
 - Security Dashboard: Partial/no equivalent verified; no observed check name.
 - Browser: Domain warnings and alias/redirect settings; owner confirms lifecycle responsibility.
 

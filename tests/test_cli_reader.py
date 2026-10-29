@@ -1,12 +1,14 @@
 """Bundled CLI reader: allow-listed output only, fixed failure kinds, no raw CLI text (#32).
 
-A fake `vercel` executable replays synthetic JSON shaped like CLI 62.7.0 output
+A fake `vercel` executable, put first on PATH (the reader has no option to run
+another executable, #79), replays synthetic JSON shaped like CLI 62.7.0 output
 (shapes verified with a keys-and-types-only probe). Canary values stand in for
 names, URLs, IPs and environment variable names that must never be printed.
 """
 import json
 import os
 from pathlib import Path
+import shutil
 import stat
 import subprocess
 import sys
@@ -37,12 +39,20 @@ if "banner" in entry:
     stream.write(entry["banner"]); stream.flush()
     import time; time.sleep(60); sys.exit(0)
 if "stderr" in entry:
-    sys.stderr.write(entry["stderr"]); sys.exit(entry.get("exit", 1))
+    sys.stdout.write(entry.get("stdout", "")); sys.stderr.write(entry["stderr"]); sys.exit(entry.get("exit", 1))
 sys.stdout.write(entry["stdout"] if isinstance(entry.get("stdout"), str) else json.dumps(entry["json"]))
 sys.exit(entry.get("exit", 0))
 '''
 LOGIN_BANNER = ("> No existing credentials found. Starting login flow...\n"
                 "> Visit https://vercel.com/oauth/device?user_code=" + CANARY + "\n")
+
+
+def agent_error(reason, message):
+    """Shaped like the CLI 62.7.0 writeAgentError payload (agent-output chunk)."""
+    return {"status": "error", "reason": reason, "message": message, "hint": CANARY + " hint",
+            "scope": CANARY.lower(), "next": [{"command": "vercel " + CANARY, "when": CANARY}]}
+
+
 LOGGED_OUT_WHOAMI = {"stdout": json.dumps({"loggedIn": False, "cliVersion": "65.3.1", "linkedProject": None}), "exit": 1}
 
 SECURITY = {"report": {
@@ -93,6 +103,19 @@ FIXTURES = {
     "domains list --scope example-team --limit 100": {"json": {"pagination": {"count": 2, "next": None, "prev": None},
         "domains": [{"name": CANARY + ".example", "verified": True, "id": CANARY, "nameservers": [CANARY]},
                     {"name": "internal-" + CANARY + ".example", "verified": False, "serviceType": CANARY}]}},
+    # CLI 65.3.1 domains list item shape (#81); hostnames, registrars and creators are canaries.
+    "domains list --scope shape-team --limit 100": {"json": {"pagination": {"count": 3, "next": None, "prev": None},
+        "domains": [
+            {"name": CANARY + ".example", "registrar": CANARY + " Registrar", "nameservers": "external",
+             "expiresAt": 1798761600000, "createdAt": 1735689600000, "creator": CANARY.lower() + "-user"},
+            {"name": "shop." + CANARY.lower() + ".example", "registrar": "Vercel " + CANARY, "nameservers": "vercel",
+             "expiresAt": "2027-01-01T00:00:00Z", "createdAt": "2025-01-01T00:00:00.000+00:00", "creator": CANARY},
+            {"name": CANARY + "-odd.example", "registrar": CANARY, "nameservers": CANARY.lower(),
+             "expiresAt": None, "createdAt": -5, "creator": CANARY}]}},
+    "domains list --scope badtime-team --limit 100": {"json": {"pagination": {"count": 6, "next": None, "prev": None},
+        "domains": [{"nameservers": ["ns1." + CANARY + ".example"], "expiresAt": value, "createdAt": value}
+                    for value in (True, 1.5, "2026-13-01T00:00:00Z", "2026-01-02", "yesterday " + CANARY,
+                                  {"at": CANARY})]}},
     "domains list --scope page-team --limit 100": {"json": {"pagination": {"count": 1, "next": 555, "prev": None},
         "domains": [{"name": CANARY + "-a.example", "verified": True}]}},
     "domains list --scope page-team --limit 100 --next 555": {"json": {"pagination": {"count": 1, "next": None, "prev": 555},
@@ -108,6 +131,23 @@ FIXTURES = {
     "project ls --scope loop-team": {"json": dict(PROJECTS, pagination={"count": 1, "next": 333, "prev": None})},
     "project ls --scope loop-team --next 333": {"json": dict(PROJECTS, pagination={"count": 1, "next": 333, "prev": 1})},
     "project ls --scope nopage-team": {"json": {"projects": PROJECTS["projects"]}},
+    # A pagination block that is present but malformed stays invalid_cursor (#84).
+    "project ls --scope emptyblock-team": {"json": dict(PROJECTS, pagination={"count": 1})},
+    "project ls --scope nullblock-team": {"json": dict(PROJECTS, pagination=None)},
+    "project ls --scope badcursor-team": {"json": dict(PROJECTS, pagination={"next": "../" + CANARY})},
+    "project ls --scope halfpage-team": {"json": dict(PROJECTS, pagination={"count": 1, "next": 444, "prev": None})},
+    "project ls --scope halfpage-team --next 444": {"json": {"projects": [dict(PROJECTS["projects"][0], id="prj_2")]}},
+    # Activity with no pagination block at all: the shape is unverified, so the end is not reported.
+    "activity --scope example-team --all --since 24h --limit 100": {"json": {
+        "scope": {"teamSlug": CANARY.lower()},
+        "events": [{"type": "project-created", "createdAt": 3, "text": CANARY},
+                   {"type": "project-created", "createdAt": 2, "text": CANARY},
+                   {"type": "team-member-joined", "createdAt": 1, "user": {"email": CANARY}}]}},
+    # The CLI 62.7.0 source shape: pagination.next is the last event's createdAt - 1, or null.
+    "activity --scope example-team --all --since 30d --limit 100": {"json": {
+        "events": [{"type": "project-created", "createdAt": 10}], "pagination": {"next": 9}}},
+    "activity --scope example-team --all --since 30d --limit 100 --next 9": {"json": {
+        "events": [{"type": "deployment", "createdAt": 8}], "pagination": {"next": None}}},
     # Shapes the CLI 65.3.1 statusOf reads (#77): no access and muted must never pass.
     "security check --scope muted-team": {"json": {"posture": {"mutedCount": 3}, "report": {
         "members-no-mfa": {"unavailable": True, "unavailableReason": "insufficient-permissions", "violationsCount": 0},
@@ -121,6 +161,27 @@ FIXTURES = {
     }}},
     "security check --scope old-team": {
         "stderr": 'Error: "security" is not a valid target directory or subcommand. Did you mean "cert"?\n'},
+    # Agent-mode error payloads (#79): only the reason is used; message, hint, scope and next never are.
+    "security check --scope agent-permission-team": {"exit": 1, "stdout": json.dumps(agent_error(
+        "forbidden", "Not found (404): " + CANARY))},
+    "project ls --scope agent-stderr-team": {"exit": 1, "stdout": "", "stderr": json.dumps(agent_error(
+        "project_not_found", "You do not have permission " + CANARY))},
+    "webhooks list --scope agent-unknown-team": {"exit": 1, "stdout": json.dumps(agent_error(
+        CANARY.lower() + "_reason", "Forbidden (403)"))},
+    "webhooks list --scope agent-typed-team": {"exit": 1, "stdout": json.dumps(dict(agent_error("x", "x"), reason=403))},
+    "webhooks list --scope agent-precedence-team": {"exit": 1, "stdout": json.dumps(agent_error("api_error", CANARY)),
+                                                    "stderr": "Error: " + CANARY + " (403)\n"},
+    "integration list --scope agent-401-team --all": {"exit": 1, "stdout": json.dumps(agent_error("not_authorized", CANARY))},
+    "integration list --scope agent-plan-team --all": {"exit": 2, "stdout": json.dumps(agent_error("PLAN_UPGRADE_REQUIRED", CANARY))},
+    # Plain stderr: names containing "permission" or "404" must not decide the kind.
+    "firewall status --scope example-team --project permission-404-site": {
+        "stderr": "Error: Project permission-404-site could not be loaded\nError: permission-404-site not found\n"},
+    "firewall overview --scope example-team --project permission-404-site": {
+        "stderr": "Error: permission-404-site: forbidden permission 403 404\n"},
+    "firewall status --scope example-team --project denied-site": {
+        "stderr": 'Error: You do not have permission to access project "denied-site" in team "example-team".\n'},
+    "firewall status --scope example-team --project missing-site": {"stderr": "Error: Project not found (404)\n"},
+    "firewall status --scope example-team --project expired-site": {"stderr": "Error: The token is not valid (401).\n"},
 }
 
 
@@ -135,13 +196,17 @@ class CLIReaderTests(unittest.TestCase):
         self.fixtures = self.directory / "fixtures.json"
         self.fixtures.write_text(json.dumps(FIXTURES), encoding="utf-8")
         self.log = self.directory / "argv.log"
+        # The fake shadows any real CLI: the reader resolves `vercel` through PATH.
+        self.path = str(self.directory) + os.pathsep + os.environ.get("PATH", os.defpath)
+        self.assertEqual(shutil.which("vercel", path=self.path), str(self.cli))
 
-    def read(self, *args, version=None, overrides=None):
+    def read(self, *args, version=None, overrides=None, path=None):
         if version or overrides:
             data = dict(FIXTURES, **({"--version": version} if version else {}), **(overrides or {}))
             self.fixtures.write_text(json.dumps(data), encoding="utf-8")
-        environment = dict(os.environ, FAKE_FIXTURES=str(self.fixtures), FAKE_LOG=str(self.log))
-        result = subprocess.run([sys.executable, "-I", "-B", str(READER), *args, "--cli", str(self.cli)],
+        environment = dict(os.environ, FAKE_FIXTURES=str(self.fixtures), FAKE_LOG=str(self.log),
+                           PATH=self.path if path is None else path)
+        result = subprocess.run([sys.executable, "-I", "-B", str(READER), *args],
                                 capture_output=True, text=True, timeout=30, env=environment, check=False)
         self.assertNotIn(CANARY, result.stdout + result.stderr)
         self.assertNotIn("Traceback", result.stderr)
@@ -261,11 +326,32 @@ class CLIReaderTests(unittest.TestCase):
         self.assertEqual(self.ok("integrations", *SCOPE)["result"],
                          {"resources": [{"product": "Upstash for Redis", "status": "available", "projectCount": 1}]})
 
-    def test_domains_use_synthetic_aliases_and_boolean_flags_only(self):
+    def test_domains_use_synthetic_aliases_and_keep_boolean_flags(self):
         output = self.ok("domains", *SCOPE)
+        unknown = {"nameservers": "unknown", "expiresAt": "unknown", "createdAt": "unknown"}
         self.assertEqual(output["result"], {"domainsCount": 2, "domains": [
-            {"alias": "domain-1", "flags": {"verified": True}}, {"alias": "domain-2", "flags": {"verified": False}}]})
+            dict(unknown, alias="domain-1", flags={"verified": True}),
+            dict(unknown, alias="domain-2", flags={"verified": False})]})
         self.assertNotIn(".example", json.dumps(output))
+
+    def test_domains_keep_nameservers_and_dates_from_the_cli_shape(self):
+        output = self.ok("domains", "--scope", "shape-team")
+        self.assertEqual(output["result"], {"domainsCount": 3, "domains": [
+            {"alias": "domain-1", "nameservers": "external", "expiresAt": 1798761600000,
+             "createdAt": 1735689600000, "flags": {}},
+            {"alias": "domain-2", "nameservers": "vercel", "expiresAt": "2027-01-01T00:00:00Z",
+             "createdAt": "2025-01-01T00:00:00.000+00:00", "flags": {}},
+            {"alias": "domain-3", "nameservers": "unknown", "expiresAt": "unknown", "createdAt": "unknown", "flags": {}}]})
+        text = json.dumps(output)
+        for withheld in (".example", "Registrar", "Vercel ", "-user", '"name"', '"registrar"', '"creator"'):
+            self.assertNotIn(withheld, text)
+
+    def test_unvalidated_domain_dates_and_nameservers_are_unknown(self):
+        domains = self.ok("domains", "--scope", "badtime-team")["result"]["domains"]
+        self.assertEqual(len(domains), 6)
+        for domain in domains:
+            self.assertEqual({k: domain[k] for k in ("nameservers", "expiresAt", "createdAt")},
+                             {"nameservers": "unknown", "expiresAt": "unknown", "createdAt": "unknown"})
 
     def test_team_check_reports_only_the_agreed_team(self):
         output = self.ok("team-check", *SCOPE)
@@ -297,17 +383,97 @@ class CLIReaderTests(unittest.TestCase):
                                               "stoppedBecause": "invalid_json"})
         self.assertEqual(len(output["partialResult"]["projects"]), 1)
 
-    def test_repeated_cursor_page_cap_and_missing_pagination_are_incomplete(self):
+    def test_repeated_cursor_page_cap_and_malformed_pagination_are_incomplete(self):
         self.assertEqual(self.failure("project-ls", "--scope", "loop-team")["failure"], "repeated_cursor")
         capped = self.failure("project-ls", "--scope", "page-team", "--max-pages", "1")
         self.assertEqual(capped["failure"], "page_cap_reached")
         self.assertEqual(capped["coverage"]["pages"], 1)
-        self.assertEqual(self.failure("project-ls", "--scope", "nopage-team")["failure"], "invalid_cursor")
+        for scope in ("emptyblock-team", "nullblock-team", "badcursor-team"):
+            output = self.failure("project-ls", "--scope", scope)
+            self.assertEqual(output["failure"], "invalid_cursor", scope)
+            self.assertEqual(output["coverage"]["stoppedBecause"], "invalid_cursor", scope)
         self.assertEqual(self.read("project-ls", "--scope", "page-team", "--max-pages", "0").returncode, 2)
+
+    def test_missing_pagination_block_returns_data_with_end_not_reported(self):
+        not_reported = {"endOfList": "not_reported", "complete": "unknown", "reason": "no_pagination_block"}
+        output = self.ok("activity", *SCOPE)
+        self.assertEqual(output["result"], {"eventsCount": 3, "eventTypes": {"project-created": 2, "team-member-joined": 1}})
+        self.assertEqual(output["coverage"], dict(not_reported, pages=1))
+        self.assertEqual(self.ok("project-ls", "--scope", "nopage-team")["coverage"], dict(not_reported, pages=1))
+        later = self.ok("project-ls", "--scope", "halfpage-team")
+        self.assertEqual([p["id"] for p in later["result"]["projects"]], ["prj_1", "prj_2"])
+        self.assertEqual(later["coverage"], dict(not_reported, pages=2))
+
+    def test_activity_follows_the_numeric_cursor_to_an_explicit_end(self):
+        output = self.ok("activity", *SCOPE, "--since", "30d")
+        self.assertEqual(output["result"], {"eventsCount": 2, "eventTypes": {"project-created": 1, "deployment": 1}})
+        self.assertEqual(output["coverage"], {"pages": 2, "endOfList": "known", "complete": True})
+
+    def test_page_one_failures_carry_coverage(self):
+        output = self.failure("activity", *SCOPE, "--since", "7d")
+        self.assertEqual(output["failure"], "permission")
+        self.assertEqual(output["coverage"], {"pages": 0, "complete": False, "stoppedBecause": "permission"})
+        self.assertNotIn("partialResult", output)
+        logged_out = json.loads(self.read("domains", *SCOPE, overrides={"whoami": LOGGED_OUT_WHOAMI}).stdout)
+        self.assertEqual(logged_out["coverage"], {"pages": 0, "complete": False, "stoppedBecause": "not_authenticated"})
+        # Reads that are not paginated keep the plain incomplete marker.
+        self.assertEqual(self.failure("webhooks", *SCOPE)["coverage"], {"complete": False})
 
     def test_failures_are_fixed_kinds_without_cli_text(self):
         self.assertEqual(self.failure("webhooks", *SCOPE)["failure"], "invalid_json")
         self.assertEqual(self.failure("activity", *SCOPE, "--since", "7d")["failure"], "permission")
+
+    def test_there_is_no_option_to_run_another_executable(self):
+        help_text = self.read("--help").stdout
+        self.assertIn("--max-pages", help_text)
+        self.assertNotIn("--cli", help_text)
+        other = self.directory / "other.sh"
+        other.write_text("#!/bin/sh\necho ran > \"$FAKE_LOG\"\n", encoding="utf-8")
+        other.chmod(other.stat().st_mode | stat.S_IXUSR)
+        for flag in (["--cli", str(other)], ["--cli=" + str(other)]):
+            result = self.read("whoami", *flag)
+            self.assertEqual(result.returncode, 2, flag)
+            self.assertEqual(result.stdout, "")
+        self.assertFalse(self.log.exists())
+        source = READER.read_text(encoding="utf-8")
+        self.assertNotIn("--cli", source)
+        self.assertNotIn("os.environ", source)
+
+    def test_without_vercel_on_path_the_cli_is_unavailable(self):
+        empty = self.directory / "empty"
+        empty.mkdir()
+        output = json.loads(self.read("whoami", path=str(empty)).stdout)
+        self.assertEqual(output["failure"], "cli_unavailable")
+        self.assertFalse(self.log.exists())
+
+    def assert_only_the_kind(self, output, kind):
+        self.assertEqual(output["failure"], kind)
+        self.assertLessEqual(set(output), {"read", "ok", "failure", "coverage", "note"})
+        self.assertNotIn("hint", json.dumps(output))
+
+    def test_structured_agent_reason_decides_the_kind(self):
+        # The message says 404 and the hint names the scope; the reason still decides.
+        self.assert_only_the_kind(self.failure("security-check", "--scope", "agent-permission-team"), "permission")
+        self.assert_only_the_kind(self.failure("project-ls", "--scope", "agent-stderr-team"), "not_found")
+        output = self.failure("integrations", "--scope", "agent-401-team")
+        self.assert_only_the_kind(output, "not_authenticated")
+        self.assertIn("vercel login", output["note"])
+        self.assert_only_the_kind(self.failure("integrations", "--scope", "agent-plan-team"), "plan_required")
+
+    def test_unknown_or_mistyped_reasons_are_cli_errors_without_substring_guessing(self):
+        for scope in ("agent-unknown-team", "agent-typed-team", "agent-precedence-team"):
+            self.assert_only_the_kind(self.failure("webhooks", "--scope", scope), "cli_error")
+
+    def test_plain_stderr_names_do_not_decide_the_kind(self):
+        for read in ("firewall-status", "firewall-overview"):
+            output = self.failure(read, *SCOPE, "--project", "permission-404-site")
+            self.assert_only_the_kind(output, "cli_error")
+            self.assertNotIn("permission-404-site", json.dumps(output))
+
+    def test_anchored_cli_phrases_still_classify_plain_stderr(self):
+        for project, kind in (("denied-site", "permission"), ("missing-site", "not_found"),
+                              ("expired-site", "not_authenticated")):
+            self.assert_only_the_kind(self.failure("firewall-status", *SCOPE, "--project", project), kind)
 
     def test_missing_security_command_is_a_capability_gap(self):
         output = self.failure("security-check", "--scope", "old-team")
