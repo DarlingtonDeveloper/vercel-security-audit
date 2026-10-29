@@ -98,6 +98,17 @@ FIXTURES = {
     "project ls --scope loop-team": {"json": dict(PROJECTS, pagination={"count": 1, "next": 333, "prev": None})},
     "project ls --scope loop-team --next 333": {"json": dict(PROJECTS, pagination={"count": 1, "next": 333, "prev": 1})},
     "project ls --scope nopage-team": {"json": {"projects": PROJECTS["projects"]}},
+    # Shapes the CLI 65.3.1 statusOf reads (#77): no access and muted must never pass.
+    "security check --scope muted-team": {"json": {"posture": {"mutedCount": 3}, "report": {
+        "members-no-mfa": {"unavailable": True, "unavailableReason": "insufficient-permissions", "violationsCount": 0},
+        "pats-no-expiration": {"unavailableReason": "muted", "mutedCount": 3, "violationsCount": 0},
+        "no-count-unavailable": {"unavailable": True},
+        "reason-only": {"unavailableReason": CANARY + "-reason", "violationsCount": 0, "totalCount": 5},
+        "partly-muted": {"violationsCount": 0, "totalCount": 4, "mutedCount": 2},
+        "muted-with-open": {"violationsCount": 1, "totalCount": 4, "mutedCount": 2},
+        "clean": {"violationsCount": 0, "totalCount": 4, "mutedCount": 0},
+        "flag-false": {"unavailable": False, "violationsCount": 0, "totalCount": 2, "mutedCount": "2"},
+    }}},
     "security check --scope old-team": {
         "stderr": 'Error: "security" is not a valid target directory or subcommand. Did you mean "cert"?\n'},
 }
@@ -153,17 +164,62 @@ class CLIReaderTests(unittest.TestCase):
         checks = output["result"]["checks"]
         self.assertEqual(checks["env-vars-plaintext"], {"productResult": "violations_found",
                                                         "violationsCount": 2, "totalCount": 9,
+                                                        "mutedCount": "unknown", "unavailableReason": None,
                                                         "sampleType": ["envVar"], "samplesReceived": 1})
         self.assertEqual(checks["deployment-protection"]["violationsCount"], 0)
         self.assertEqual(output["result"]["withheldCheckKeys"], 1)
 
-    def test_security_check_mapping_is_conservative_and_muted_is_undetectable(self):
+    def test_security_check_mapping_is_conservative_and_muted_is_unknown_without_fields(self):
         output = self.ok("security-check", *SCOPE)["result"]
         results = {key: value["productResult"] for key, value in output["checks"].items()}
         self.assertEqual(results, {"env-vars-plaintext": "violations_found", "deployment-protection": "no_violations",
                                    "members-no-mfa": "nothing_evaluated", "depl-no-git-fork-protection": "no_violations_total_unreported",
                                    "odd-counts": "unknown", "string-total": "unknown"})
-        self.assertIs(output["mutedDetectable"], False)
+        # CLI 62.7.0 output carries no muted fields: muted state is unknown, never "nothing muted".
+        self.assertEqual(output["mutedDetectable"], "unknown")
+        self.assertEqual(output["postureMutedCount"], "unknown")
+
+    def test_unavailable_and_muted_checks_never_pass(self):
+        output = self.ok("security-check", "--scope", "muted-team")["result"]
+        checks = output["checks"]
+        results = {key: value["productResult"] for key, value in checks.items()}
+        self.assertEqual(results, {"members-no-mfa": "unavailable", "pats-no-expiration": "muted",
+                                   "no-count-unavailable": "unavailable", "reason-only": "unavailable",
+                                   "partly-muted": "muted", "muted-with-open": "violations_found",
+                                   "clean": "no_violations", "flag-false": "no_violations"})
+        self.assertEqual(checks["members-no-mfa"]["unavailableReason"], "insufficient_permissions")
+        self.assertEqual(checks["no-count-unavailable"]["unavailableReason"], "other")
+        # Unknown reason strings map to "other" and are never echoed (the read() helper checks the canary).
+        self.assertEqual(checks["reason-only"]["unavailableReason"], "other")
+        self.assertEqual(checks["pats-no-expiration"]["mutedCount"], 3)
+        self.assertEqual(checks["pats-no-expiration"]["unavailableReason"], "muted")
+        self.assertEqual(checks["flag-false"]["mutedCount"], "unknown")
+        self.assertEqual(output["postureMutedCount"], 3)
+        # Not every check reports mutedCount, so muted state is not fully known.
+        self.assertEqual(output["mutedDetectable"], "unknown")
+
+    def test_no_unavailable_input_produces_a_passing_result(self):
+        sys.path.insert(0, str(READER.parent))
+        try:
+            import cli_read
+        finally:
+            sys.path.pop(0)
+        passing = {"no_violations", "no_violations_total_unreported"}
+        for flag in (True, False, None, "yes", 1, "absent"):
+            for reason in ("muted", "insufficient-permissions", "other-thing", 7, None, "absent"):
+                for counts in ({}, {"violationsCount": 0}, {"violationsCount": 0, "totalCount": 3}):
+                    check = dict(counts)
+                    if flag != "absent":
+                        check["unavailable"] = flag
+                    if reason != "absent":
+                        check["unavailableReason"] = reason
+                    flagged = flag not in ("absent", None, False) or reason not in ("absent", None)
+                    result = cli_read.select_security_check({"report": {"c": check}})["checks"]["c"]
+                    if flagged:
+                        self.assertNotIn(result["productResult"], passing, check)
+        every = cli_read.select_security_check({"report": {"a": {"violationsCount": 0, "totalCount": 1, "mutedCount": 0},
+                                                           "b": {"unavailableReason": "muted"}}})
+        self.assertIs(every["mutedDetectable"], True)
 
     def test_whoami_keeps_username_only(self):
         self.assertEqual(self.ok("whoami")["result"], {"username": "example-user"})

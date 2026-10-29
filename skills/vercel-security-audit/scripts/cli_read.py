@@ -79,24 +79,54 @@ def select_whoami(data):
     return {"username": _get(data, "username") if isinstance(_get(data, "username"), str) else UNKNOWN}
 
 
-def product_result(violations, total):
-    """Conservative per-product-check result from the only fields the CLI returns.
+# Known unavailableReason values (CLI 65.3.1 statusOf); anything else is reported as "other", never echoed.
+UNAVAILABLE_REASONS = {"muted": "muted", "insufficient-permissions": "insufficient_permissions"}
 
+
+def _non_negative(value):
+    value = _int(value)
+    return value if value == UNKNOWN or value >= 0 else UNKNOWN
+
+
+def product_result(violations, total, unavailable=False, reason=None, muted=UNKNOWN):
+    """Conservative per-product-check result, checked in the same order as the CLI's statusOf.
+
+    unavailableReason "muted": muted. unavailable (or any other reason): unavailable.
+    Neither is ever passing, whatever the counts say.
     violations > 0: violations_found (a review candidate, not yet a finding).
     violations == 0 and total > 0: no_violations (this product check and scope only).
     violations == 0 and total omitted: no_violations_total_unreported (the CLI omits
     totalCount for some checks; zero from a complete structured check still counts,
     with the missing total recorded as a caveat).
     total == 0: nothing_evaluated. Missing, negative or mistyped counts: unknown.
-    Muted findings cannot be detected from this output.
+    mutedCount above 0 with no unmuted violations: muted, not passing.
     """
+    if reason == "muted":
+        return "muted"
+    if unavailable or reason is not None:
+        return "unavailable"
     if violations == UNKNOWN:
         return UNKNOWN
     if violations > 0:
         return "violations_found"
+    if muted != UNKNOWN and muted > 0:
+        return "muted"
     if total == UNKNOWN:
         return "no_violations_total_unreported"
     return "no_violations" if total > 0 else "nothing_evaluated"
+
+
+def _unavailable_state(value):
+    """(unavailable, reason) from the check's own fields; a present non-false flag counts as unavailable."""
+    raw_flag, raw_reason = _get(value, "unavailable"), _get(value, "unavailableReason")
+    if raw_reason in (UNKNOWN, None):
+        reason = None
+    else:
+        reason = UNAVAILABLE_REASONS.get(raw_reason, "other") if isinstance(raw_reason, str) else "other"
+    unavailable = raw_flag not in (UNKNOWN, None, False)
+    if unavailable and reason is None:
+        reason = "other"
+    return unavailable, reason
 
 
 def select_security_check(data):
@@ -112,16 +142,24 @@ def select_security_check(data):
             or (raw_total != UNKNOWN and total == UNKNOWN)
         if malformed:
             violations = total = UNKNOWN
+        unavailable, reason = _unavailable_state(value)
+        muted = _non_negative(_get(value, "mutedCount"))
         checks[key] = {
-            "productResult": product_result(violations, total),
+            "productResult": product_result(violations, total, unavailable, reason, muted),
             "violationsCount": violations,
             "totalCount": total,
+            "mutedCount": muted,
+            "unavailableReason": reason,
             "sampleType": [item for item in _list(_get(value, "sampleType")) if isinstance(item, str) and SAMPLE_TYPE.fullmatch(item)],
             # Samples name projects, deployments and environment variables: count only.
             "samplesReceived": _count(_get(value, "samples")),
         }
+    # Muted state is known only for checks that report mutedCount or a muted reason; otherwise it is unknown.
+    detectable = bool(checks) and all(c["mutedCount"] != UNKNOWN or c["unavailableReason"] == "muted"
+                                      for c in checks.values())
     return {"checks": checks, "withheldCheckKeys": withheld, "reportPresent": isinstance(report, dict),
-            "mutedDetectable": False}
+            "mutedDetectable": True if detectable else UNKNOWN,
+            "postureMutedCount": _non_negative(_get(data, "posture", "mutedCount"))}
 
 
 def select_project_ls(data):
