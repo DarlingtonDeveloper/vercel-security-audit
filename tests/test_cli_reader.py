@@ -1,12 +1,14 @@
 """Bundled CLI reader: allow-listed output only, fixed failure kinds, no raw CLI text (#32).
 
-A fake `vercel` executable replays synthetic JSON shaped like CLI 62.7.0 output
+A fake `vercel` executable, put first on PATH (the reader has no option to run
+another executable, #79), replays synthetic JSON shaped like CLI 62.7.0 output
 (shapes verified with a keys-and-types-only probe). Canary values stand in for
 names, URLs, IPs and environment variable names that must never be printed.
 """
 import json
 import os
 from pathlib import Path
+import shutil
 import stat
 import subprocess
 import sys
@@ -37,12 +39,20 @@ if "banner" in entry:
     stream.write(entry["banner"]); stream.flush()
     import time; time.sleep(60); sys.exit(0)
 if "stderr" in entry:
-    sys.stderr.write(entry["stderr"]); sys.exit(entry.get("exit", 1))
+    sys.stdout.write(entry.get("stdout", "")); sys.stderr.write(entry["stderr"]); sys.exit(entry.get("exit", 1))
 sys.stdout.write(entry["stdout"] if isinstance(entry.get("stdout"), str) else json.dumps(entry["json"]))
 sys.exit(entry.get("exit", 0))
 '''
 LOGIN_BANNER = ("> No existing credentials found. Starting login flow...\n"
                 "> Visit https://vercel.com/oauth/device?user_code=" + CANARY + "\n")
+
+
+def agent_error(reason, message):
+    """Shaped like the CLI 62.7.0 writeAgentError payload (agent-output chunk)."""
+    return {"status": "error", "reason": reason, "message": message, "hint": CANARY + " hint",
+            "scope": CANARY.lower(), "next": [{"command": "vercel " + CANARY, "when": CANARY}]}
+
+
 LOGGED_OUT_WHOAMI = {"stdout": json.dumps({"loggedIn": False, "cliVersion": "65.3.1", "linkedProject": None}), "exit": 1}
 
 SECURITY = {"report": {
@@ -121,6 +131,27 @@ FIXTURES = {
     }}},
     "security check --scope old-team": {
         "stderr": 'Error: "security" is not a valid target directory or subcommand. Did you mean "cert"?\n'},
+    # Agent-mode error payloads (#79): only the reason is used; message, hint, scope and next never are.
+    "security check --scope agent-permission-team": {"exit": 1, "stdout": json.dumps(agent_error(
+        "forbidden", "Not found (404): " + CANARY))},
+    "project ls --scope agent-stderr-team": {"exit": 1, "stdout": "", "stderr": json.dumps(agent_error(
+        "project_not_found", "You do not have permission " + CANARY))},
+    "webhooks list --scope agent-unknown-team": {"exit": 1, "stdout": json.dumps(agent_error(
+        CANARY.lower() + "_reason", "Forbidden (403)"))},
+    "webhooks list --scope agent-typed-team": {"exit": 1, "stdout": json.dumps(dict(agent_error("x", "x"), reason=403))},
+    "webhooks list --scope agent-precedence-team": {"exit": 1, "stdout": json.dumps(agent_error("api_error", CANARY)),
+                                                    "stderr": "Error: " + CANARY + " (403)\n"},
+    "integration list --scope agent-401-team --all": {"exit": 1, "stdout": json.dumps(agent_error("not_authorized", CANARY))},
+    "integration list --scope agent-plan-team --all": {"exit": 2, "stdout": json.dumps(agent_error("PLAN_UPGRADE_REQUIRED", CANARY))},
+    # Plain stderr: names containing "permission" or "404" must not decide the kind.
+    "firewall status --scope example-team --project permission-404-site": {
+        "stderr": "Error: Project permission-404-site could not be loaded\nError: permission-404-site not found\n"},
+    "firewall overview --scope example-team --project permission-404-site": {
+        "stderr": "Error: permission-404-site: forbidden permission 403 404\n"},
+    "firewall status --scope example-team --project denied-site": {
+        "stderr": 'Error: You do not have permission to access project "denied-site" in team "example-team".\n'},
+    "firewall status --scope example-team --project missing-site": {"stderr": "Error: Project not found (404)\n"},
+    "firewall status --scope example-team --project expired-site": {"stderr": "Error: The token is not valid (401).\n"},
 }
 
 
@@ -135,13 +166,17 @@ class CLIReaderTests(unittest.TestCase):
         self.fixtures = self.directory / "fixtures.json"
         self.fixtures.write_text(json.dumps(FIXTURES), encoding="utf-8")
         self.log = self.directory / "argv.log"
+        # The fake shadows any real CLI: the reader resolves `vercel` through PATH.
+        self.path = str(self.directory) + os.pathsep + os.environ.get("PATH", os.defpath)
+        self.assertEqual(shutil.which("vercel", path=self.path), str(self.cli))
 
-    def read(self, *args, version=None, overrides=None):
+    def read(self, *args, version=None, overrides=None, path=None):
         if version or overrides:
             data = dict(FIXTURES, **({"--version": version} if version else {}), **(overrides or {}))
             self.fixtures.write_text(json.dumps(data), encoding="utf-8")
-        environment = dict(os.environ, FAKE_FIXTURES=str(self.fixtures), FAKE_LOG=str(self.log))
-        result = subprocess.run([sys.executable, "-I", "-B", str(READER), *args, "--cli", str(self.cli)],
+        environment = dict(os.environ, FAKE_FIXTURES=str(self.fixtures), FAKE_LOG=str(self.log),
+                           PATH=self.path if path is None else path)
+        result = subprocess.run([sys.executable, "-I", "-B", str(READER), *args],
                                 capture_output=True, text=True, timeout=30, env=environment, check=False)
         self.assertNotIn(CANARY, result.stdout + result.stderr)
         self.assertNotIn("Traceback", result.stderr)
@@ -308,6 +343,58 @@ class CLIReaderTests(unittest.TestCase):
     def test_failures_are_fixed_kinds_without_cli_text(self):
         self.assertEqual(self.failure("webhooks", *SCOPE)["failure"], "invalid_json")
         self.assertEqual(self.failure("activity", *SCOPE, "--since", "7d")["failure"], "permission")
+
+    def test_there_is_no_option_to_run_another_executable(self):
+        help_text = self.read("--help").stdout
+        self.assertIn("--max-pages", help_text)
+        self.assertNotIn("--cli", help_text)
+        other = self.directory / "other.sh"
+        other.write_text("#!/bin/sh\necho ran > \"$FAKE_LOG\"\n", encoding="utf-8")
+        other.chmod(other.stat().st_mode | stat.S_IXUSR)
+        for flag in (["--cli", str(other)], ["--cli=" + str(other)]):
+            result = self.read("whoami", *flag)
+            self.assertEqual(result.returncode, 2, flag)
+            self.assertEqual(result.stdout, "")
+        self.assertFalse(self.log.exists())
+        source = READER.read_text(encoding="utf-8")
+        self.assertNotIn("--cli", source)
+        self.assertNotIn("os.environ", source)
+
+    def test_without_vercel_on_path_the_cli_is_unavailable(self):
+        empty = self.directory / "empty"
+        empty.mkdir()
+        output = json.loads(self.read("whoami", path=str(empty)).stdout)
+        self.assertEqual(output["failure"], "cli_unavailable")
+        self.assertFalse(self.log.exists())
+
+    def assert_only_the_kind(self, output, kind):
+        self.assertEqual(output["failure"], kind)
+        self.assertLessEqual(set(output), {"read", "ok", "failure", "coverage", "note"})
+        self.assertNotIn("hint", json.dumps(output))
+
+    def test_structured_agent_reason_decides_the_kind(self):
+        # The message says 404 and the hint names the scope; the reason still decides.
+        self.assert_only_the_kind(self.failure("security-check", "--scope", "agent-permission-team"), "permission")
+        self.assert_only_the_kind(self.failure("project-ls", "--scope", "agent-stderr-team"), "not_found")
+        output = self.failure("integrations", "--scope", "agent-401-team")
+        self.assert_only_the_kind(output, "not_authenticated")
+        self.assertIn("vercel login", output["note"])
+        self.assert_only_the_kind(self.failure("integrations", "--scope", "agent-plan-team"), "plan_required")
+
+    def test_unknown_or_mistyped_reasons_are_cli_errors_without_substring_guessing(self):
+        for scope in ("agent-unknown-team", "agent-typed-team", "agent-precedence-team"):
+            self.assert_only_the_kind(self.failure("webhooks", "--scope", scope), "cli_error")
+
+    def test_plain_stderr_names_do_not_decide_the_kind(self):
+        for read in ("firewall-status", "firewall-overview"):
+            output = self.failure(read, *SCOPE, "--project", "permission-404-site")
+            self.assert_only_the_kind(output, "cli_error")
+            self.assertNotIn("permission-404-site", json.dumps(output))
+
+    def test_anchored_cli_phrases_still_classify_plain_stderr(self):
+        for project, kind in (("denied-site", "permission"), ("missing-site", "not_found"),
+                              ("expired-site", "not_authenticated")):
+            self.assert_only_the_kind(self.failure("firewall-status", *SCOPE, "--project", project), kind)
 
     def test_missing_security_command_is_a_capability_gap(self):
         output = self.failure("security-check", "--scope", "old-team")
