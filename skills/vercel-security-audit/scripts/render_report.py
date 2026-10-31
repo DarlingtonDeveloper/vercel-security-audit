@@ -29,6 +29,9 @@ STATUSES = {
     "not_reviewed": ("Not reviewed", "unreviewed"),
     "not_applicable": ("Not applicable", "na"),
 }
+# Fixed suffix for a status matrix Check cell whose setting the owner accepted (#80).
+# The status cell stays needs_confirmation; check_report.py validates the pairing.
+OWNER_ACCEPTED_MARKER = "(owner-accepted)"
 GENERIC_FAILURE = ("Could not render report. Check the sanitised Markdown, bundled assets "
                    "and new output path. Existing files were preserved.")
 

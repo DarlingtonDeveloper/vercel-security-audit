@@ -94,6 +94,23 @@ def select_whoami(data):
 # Known unavailableReason values (CLI 65.3.1 statusOf); anything else is reported as "other", never echoed.
 UNAVAILABLE_REASONS = {"muted": "muted", "insufficient-permissions": "insufficient_permissions"}
 
+# Every product check slug in the CLI's SECURITY_CHECKS table (CLI 65.7.0, commands-core.js),
+# mapped to the one checklist ID whose subsetting it tests. capabilities.md documents the
+# same table; a slug not listed here is reported as "unmapped", never dropped (#90).
+CHECK_SLUG_VERSION = "65.7.0"
+CHECKLIST_IDS = {
+    "members-no-mfa": "IAM-02",
+    "members-too-many-owners": "IAM-01",
+    "pats-no-expiration": "CRE-01",
+    "env-vars-creds-instead-of-oidc": "SEC-02",
+    "depl-no-git-fork-protection": "SRC-03",
+    "proj-no-preview-depl-protection": "DEP-01",
+    "env-vars-non-sensitive": "SEC-01",
+    "env-vars-non-sensitive-stale": "SEC-02",
+    "env-vars-exposed-web-app-fwk": "SEC-01",
+}
+UNMAPPED = "unmapped"
+
 
 def _non_negative(value):
     value = _int(value)
@@ -157,6 +174,7 @@ def select_security_check(data):
         unavailable, reason = _unavailable_state(value)
         muted = _non_negative(_get(value, "mutedCount"))
         checks[key] = {
+            "checklistId": CHECKLIST_IDS.get(key, UNMAPPED),
             "productResult": product_result(violations, total, unavailable, reason, muted),
             "violationsCount": violations,
             "totalCount": total,

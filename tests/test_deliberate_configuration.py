@@ -1,6 +1,7 @@
 """Offline contracts for codebase intent checks and owner-accepted settings (issue #41)."""
 import copy
 import importlib.util
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -67,6 +68,20 @@ class GuidanceTests(unittest.TestCase):
         for clause in ("current local working tree", "`vercel.json`", "`next.config.*`", "`middleware.*`",
                        "Never read `.env*` files", "Git history", "Do not run repository commands",
                        "DEP-04, SRC-04, SEC-04 and OPS-04", "Do not quote or record a secret-looking value"):
+            self.assertIn(clause, self.step4)
+
+    def test_config_intent_read_is_a_named_gate_exception(self):
+        gate = section((SKILL / "references/capabilities.md").read_text(),
+                       "## What counts as field selection before exposure", "\n## ")
+        exception = section(gate, "One named exception", "These do not count")
+        for clause in ("Config-intent read", "confirm that the listed files contain no inline secrets",
+                       "Without it, there is no read", "stop the read at once",
+                       "(browser-evidence.md#accidental-exposure-stop-and-hand-off)", "never covers `.env*` files",
+                       "chosen over a bundled config parser (issue #80)"):
+            self.assertIn(clause, exception)
+        for clause in ("contain no inline secrets", "No confirmation means no read",
+                       "one named exception to the pre-exposure gate",
+                       "(references/browser-evidence.md#accidental-exposure-stop-and-hand-off) as a secret exposure"):
             self.assertIn(clause, self.step4)
 
     def test_intent_is_not_acceptance_and_no_new_status(self):
@@ -172,6 +187,53 @@ class ModelTests(unittest.TestCase):
             result = subprocess.run([sys.executable, str(SKILL / "scripts/check_report.py"), str(html)],
                                     capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(result.stdout)["owner_accepted_markers"], ["DEP-01"])
+
+
+class MatrixMarkerTests(unittest.TestCase):
+    """An owner-accepted check is visibly marked in the matrix while its status stays needs_confirmation (#80)."""
+
+    def check(self, markdown):
+        with tempfile.TemporaryDirectory() as directory:
+            html = Path(directory) / "report.html"
+            html.write_text(MODEL.render_report(markdown))
+            return subprocess.run([sys.executable, "-I", "-B", str(SKILL / "scripts/check_report.py"), str(html)],
+                                  capture_output=True, text=True)
+
+    def test_matrix_marks_only_the_accepted_check(self):
+        markdown = MODEL.build_markdown(accepted_report())
+        rows = [line for line in markdown.splitlines() if line.startswith("| ") and "-0" in line]
+        marked = [line for line in rows if "(owner-accepted)" in line]
+        self.assertEqual(marked, ["| DEP-01 Deployment protection scope (owner-accepted) | needs_confirmation |"])
+        self.assertIn("(owner-accepted) marks a setting the owner has confirmed as deliberate", markdown)
+        unaccepted = MODEL.build_markdown(MODEL.new_report("example-team", "Synthetic configuration review"))
+        self.assertNotIn("(owner-accepted)", unaccepted)
+
+    def test_checker_rejects_a_marker_on_another_status(self):
+        report = MODEL.new_report("example-team", "Synthetic configuration review")
+        markdown = MODEL.build_markdown(report).replace(
+            "| IAM-01 Team membership and roles |", "| IAM-01 Team membership and roles (owner-accepted) |", 1)
+        result = self.check(markdown)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("Owner-accepted marker is on a check whose status is not needs_confirmation", result.stderr)
+        self.assertIn("check ID IAM-01; matrix not_reviewed; appendix not_reviewed", result.stderr)
+
+    def test_checker_rejects_a_misspelt_or_misplaced_marker(self):
+        markdown = MODEL.build_markdown(accepted_report())
+        for replacement in ("| DEP-01 Deployment protection scope (Owner-Accepted) |",
+                            "| DEP-01 (owner-accepted) Deployment protection scope |",
+                            "| DEP-01 Deployment protection scope (owner-accepted) (owner-accepted) |"):
+            with self.subTest(replacement=replacement):
+                result = self.check(markdown.replace("| DEP-01 Deployment protection scope (owner-accepted) |", replacement))
+                self.assertEqual(result.returncode, 1)
+                self.assertIn("Owner-accepted marker must be exactly (owner-accepted)", result.stderr)
+
+    def test_marker_is_documented_for_template_and_checker(self):
+        template = (SKILL / "references/report-template.md").read_text()
+        design = (SKILL / "references/report-design.md").read_text()
+        self.assertIn("ending its Check cell with exactly `(owner-accepted)`", template)
+        self.assertIn("the marker is not a status", template)
+        self.assertIn("`owner_accepted_markers`", design)
 
 
 if __name__ == "__main__":

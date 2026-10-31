@@ -8,6 +8,7 @@ names, URLs, IPs and environment variable names that must never be printed.
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import stat
 import subprocess
@@ -237,12 +238,44 @@ class CLIReaderTests(unittest.TestCase):
     def test_security_check_keeps_counts_and_drops_samples(self):
         output = self.ok("security-check", *SCOPE)
         checks = output["result"]["checks"]
-        self.assertEqual(checks["env-vars-plaintext"], {"productResult": "violations_found",
+        self.assertEqual(checks["env-vars-plaintext"], {"checklistId": "unmapped", "productResult": "violations_found",
                                                         "violationsCount": 2, "totalCount": 9,
                                                         "mutedCount": "unknown", "unavailableReason": None,
                                                         "sampleType": ["envVar"], "samplesReceived": 1})
         self.assertEqual(checks["deployment-protection"]["violationsCount"], 0)
         self.assertEqual(output["result"]["withheldCheckKeys"], 1)
+
+    def test_security_check_attaches_checklist_ids_and_flags_unknown_slugs(self):
+        checks = self.ok("security-check", *SCOPE)["result"]["checks"]
+        # A known slug carries its mapped checklist ID.
+        self.assertEqual(checks["members-no-mfa"]["checklistId"], "IAM-02")
+        # A known slug whose totalCount is omitted is still mapped, and the total stays unknown.
+        self.assertEqual(checks["depl-no-git-fork-protection"]["checklistId"], "SRC-03")
+        self.assertEqual(checks["depl-no-git-fork-protection"]["totalCount"], "unknown")
+        self.assertEqual(checks["depl-no-git-fork-protection"]["productResult"], "no_violations_total_unreported")
+        # Slugs outside the documented table are kept and marked, not dropped.
+        for slug in ("env-vars-plaintext", "deployment-protection", "odd-counts", "string-total"):
+            self.assertEqual(checks[slug]["checklistId"], "unmapped")
+        # Only checklistId was added to the per-check fields.
+        self.assertEqual(set(checks["members-no-mfa"]), {"checklistId", "productResult", "violationsCount", "totalCount",
+                                                         "mutedCount", "unavailableReason", "sampleType", "samplesReceived"})
+
+    def test_checklist_id_table_matches_capabilities_and_checklist(self):
+        sys.path.insert(0, str(READER.parent))
+        try:
+            import cli_read
+        finally:
+            sys.path.pop(0)
+        skill = READER.parents[1]
+        capabilities = (skill / "references" / "capabilities.md").read_text(encoding="utf-8")
+        table = capabilities.split("### Product check slugs", 1)[1].split("\n### ", 1)[0]
+        documented = dict(re.findall(r"^- `([a-z0-9-]+)`: ([A-Z]{3}-\d{2})\b", table, re.M))
+        self.assertEqual(documented, cli_read.CHECKLIST_IDS)
+        self.assertEqual(len(documented), 9)
+        self.assertIn("CLI " + cli_read.CHECK_SLUG_VERSION, table)
+        checklist = (skill / "references" / "checklist.md").read_text(encoding="utf-8")
+        core = set(re.findall(r"^### ([A-Z]{3}-\d{2})", checklist.split("## Optional deeper", 1)[0], re.M))
+        self.assertLessEqual(set(cli_read.CHECKLIST_IDS.values()), core)
 
     def test_security_check_mapping_is_conservative_and_muted_is_unknown_without_fields(self):
         output = self.ok("security-check", *SCOPE)["result"]
