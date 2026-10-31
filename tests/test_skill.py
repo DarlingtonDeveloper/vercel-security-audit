@@ -102,18 +102,32 @@ class PublicSkillTests(unittest.TestCase):
         self.assertIn("does not need desktop control", text)
         self.assertIn("and/or an installed Vercel CLI", text)
 
-    def test_public_skill_has_no_internal_sources_or_customer_data(self):
-        forbidden = (
-            "admin.vercel.com", "support-session", "vertex.vercel.systems", "VERTEX_JWT",
-            "clickstate", "vercel.slack.com", "shareableToken",
-        )
+    def skill_texts(self):
         for file in SKILL_DIR.rglob("*"):
-            if not file.is_file() or file.suffix in {".woff2", ".pyc"}:
-                continue
-            text = file.read_text().lower()
-            for marker in forbidden:
-                self.assertNotIn(marker.lower(), text, f"{file.name}: {marker}")
-            self.assertNotRegex(text, r"(?:/users/|/home/)[a-z0-9_-]+/")
+            if file.is_file() and file.suffix not in {".woff2", ".pyc"} and "__pycache__" not in file.parts:
+                yield file, file.read_text().lower()
+
+    def test_public_skill_has_no_local_paths(self):
+        for file, text in self.skill_texts():
+            self.assertNotRegex(text, r"(?:/users/|/home/)[a-z0-9_-]+/", file.name)
+
+    def test_public_skill_has_no_internal_sources(self):
+        """Internal names are kept out of the public repo in a gitignored, maintainer-only list.
+
+        Create tests/private-markers.txt with one name per line (lines starting with # are
+        comments). Without it, this check is skipped, so it runs only where that file exists.
+        """
+        markers_file = ROOT / "tests" / "private-markers.txt"
+        if not markers_file.is_file():
+            self.skipTest("tests/private-markers.txt not present; internal-name check runs only for maintainers")
+        markers = [line.strip().lower() for line in markers_file.read_text(encoding="utf-8").splitlines()
+                   if line.strip() and not line.lstrip().startswith("#")]
+        self.assertTrue(markers, "tests/private-markers.txt has no entries")
+        for file, text in self.skill_texts():
+            for index, marker in enumerate(markers, 1):
+                # assertFalse, not assertNotIn: the failure shows only this message (the entry
+                # number), never the name or the file text.
+                self.assertFalse(marker in text, f"{file.name}: private marker entry {index} found")
 
     def test_review_is_read_only_and_has_a_handoff(self):
         text = SKILL.read_text()
