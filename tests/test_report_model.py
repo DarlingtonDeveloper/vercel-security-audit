@@ -148,7 +148,7 @@ class ReportModelTests(unittest.TestCase):
         checker.check_passive(root)
         counts, outcomes = checker.check_counts(root)
         self.assertEqual(counts, MODEL.build_summary(value))
-        self.assertEqual(checker.check_matrix(root, outcomes), "matched all 28 checks")
+        self.assertEqual(checker.check_matrix(root, outcomes), ("matched all 28 checks", []))
         self.assertEqual(len(root.find("table")), 2)
 
     def test_init_validates_every_check_without_claiming_review(self):

@@ -16,7 +16,7 @@ Before inventory or configuration collection, complete [collection-plan.md](coll
 
 ## CLI version
 
-Minimum tested CLI version: 62.7.0 (help checked) and 65.0.0 (guided test run). Older versions can lack whole command groups: CLI 54.18.0 has no `security` command at all. Newer versions can change defaults and output shapes; for example, CLI 65 defaults to non-interactive mode when it detects an agent.
+Minimum tested CLI version: 62.7.0 (help checked) and 65.0.0 (guided test run). Newer releases were checked only where named, against help or published package source rather than a guided run: CLI 65.3.1 for security check status fields, the logged-out flow and the domains item shape, and CLI 65.7.0 for the [product check slugs](#product-check-slugs). Older versions can lack whole command groups: CLI 54.18.0 has no `security` command at all. Newer versions can change defaults and output shapes; for example, CLI 65 defaults to non-interactive mode when it detects an agent.
 
 When using the CLI fallback, check the installed version first:
 
@@ -58,6 +58,12 @@ Do not automatically run login, switch, link, pull, setup or installation comman
 1. CLI: the bundled reader, `scripts/cli_read.py`. Its allow-lists are fixed in the skill and tested; the raw output never leaves its process.
 2. MCP: a connector tool whose verified response contract is metadata-only, per the [MCP metadata boundary](mcp-boundary.md).
 3. Browser: a script evaluated in the page that returns only named fields of named controls (switch or checkbox state, a count, an enum-like label), and only on a host verified to take no automatic screenshot, snapshot or accessibility-tree capture on navigation, load, reload or tool completion. Write the selector before navigating, return booleans, numbers and short labels only, and record the selector's purpose in the evidence.
+
+One named exception reads local files without field selection, because no bundled parser can select fields safely from `next.config.*` or middleware source:
+
+- Config-intent read (SKILL.md step 4, [check the codebase before flagging deliberate configuration](../SKILL.md#check-the-codebase-before-flagging-deliberate-configuration)): local, owner-controlled deployment and routing configuration files only, read with the owner's explicit agreement. Before the read, the owner must also confirm that the listed files contain no inline secrets (tokens, API keys, basic-auth credentials, webhook secrets or passwords), and that confirmation is recorded with its time. Without it, there is no read. If a secret-looking value is seen anyway, stop the read at once, do not quote, summarise or record the value, and follow the [accidental exposure procedure](browser-evidence.md#accidental-exposure-stop-and-hand-off) as a secret exposure. The exception never covers `.env*` files, credential or key files, logs, Git history or anything outside those named files, and it is not a precedent for other unselected reads.
+
+This exception was chosen over a bundled config parser (issue #80): `vercel.json` could be parsed, but `next.config.*`, `vercel.ts` and middleware are code, so a parser would cover only part of the read and still leave the rest unselected. The owner's no-secrets confirmation and the stop-on-sight rule are the controls instead.
 
 These do not count, even if the result looks clean:
 
@@ -134,7 +140,7 @@ What each read keeps, and what it drops before output:
 
 - whoami: username only; email, display name and current team are dropped.
 - team-check: for the agreed slug only, member (true, false or unknown), plan and whether it is the current team. No other team is printed or counted.
-- security-check: per product check slug, productResult, violationsCount, totalCount, mutedCount, unavailableReason (a fixed value), sampleType and the number of samples received, plus the summary posture mutedCount. Samples (project, deployment, member and environment variable names and IDs) are dropped.
+- security-check: per product check slug, its mapped checklistId (or `unmapped`; see [product check slugs](#product-check-slugs)), productResult, violationsCount, totalCount, mutedCount, unavailableReason (a fixed value), sampleType and the number of samples received, plus the summary posture mutedCount. Samples (project, deployment, member and environment variable names and IDs) are dropped.
 - project-ls: project id, name, deprecated flag, Node.js version and updatedAt; production URLs are dropped. Inventory identifiers appear only after team-wide inventory authorisation.
 - firewall-status: enabled states, actions, rule counts, draft changes, IP block count, bypass counts and states, request-flow step and ruleset IDs and states, and the ruleset unavailable reason (for example plan). Labels, descriptions, bypass skips and upgrade URLs are dropped.
 - firewall-overview: period, granularity, Attack Mode state, attacks mitigated, whether a draft exists and counts of top rules and annotations.
@@ -149,6 +155,22 @@ What each read keeps, and what it drops before output:
 - domains: domain count and, per domain, a synthetic alias (`domain-1`, `domain-2`, ...) assigned in the reader, `nameservers` (`external`, `vercel` or `unknown`), `expiresAt` and `createdAt` (epoch milliseconds or a strict ISO 8601 timestamp; anything else, null included, is `unknown`) and any boolean flags. Domain names, registrars, creators, IDs and other strings are dropped before output.
 
 Missing or mistyped fields are reported as `unknown`, never zero or false. Shapes for custom firewall rules, system bypass entries, traffic rows, alerts, activity events and webhooks were empty when verified; the reader therefore keeps only counts and states for them. Re-check with a newer CLI before widening any allow-list, and widen it only in the bundled reader with tests, never with an ad-hoc filter during an audit.
+
+### Product check slugs
+
+These are all nine product checks in the CLI's own `SECURITY_CHECKS` table, read from the published CLI 65.7.0 package source (`dist/commands-core.js`) without querying an account. The reader attaches the mapped checklist ID to each product check as `checklistId`. Each slug tests one subsetting of its checklist ID, so a passing product check never passes the whole ID (see the productResult rules below).
+
+- `members-no-mfa`: IAM-02. Team members without multi-factor authentication (CLI risk: high).
+- `members-too-many-owners`: IAM-01. Team owners to review (high).
+- `pats-no-expiration`: CRE-01. Personal access tokens that never expire (high).
+- `env-vars-creds-instead-of-oidc`: SEC-02. Long-lived credentials where OIDC is available (high).
+- `depl-no-git-fork-protection`: SRC-03. Projects without Git fork deploy prevention (high).
+- `proj-no-preview-depl-protection`: DEP-01. Projects without preview deployment protection (high).
+- `env-vars-non-sensitive`: SEC-01. Environment variables not marked Sensitive (medium).
+- `env-vars-non-sensitive-stale`: SEC-02. Environment variables older than 90 days (medium).
+- `env-vars-exposed-web-app-fwk`: SEC-01. Environment variables exposed through a web application framework (medium).
+
+The CLI's risk labels are the product's own wording; they are not report statuses or priorities. A slug the installed CLI returns that is not in this table is reported with `checklistId: unmapped`, never dropped, so a new product check stays visible. Treat an unmapped check as evidence for no checklist ID until its subsetting is identified: read its description in `vercel security check --help` (help is not an account read), name it in the report's sources and coverage limits as an unmapped product check, and do not guess an ID. Update this table and the reader's `CHECKLIST_IDS` together, with tests, when the CLI adds a check. Slugs that look malformed are still withheld and only counted (`withheldCheckKeys`).
 
 ### Important distinctions
 

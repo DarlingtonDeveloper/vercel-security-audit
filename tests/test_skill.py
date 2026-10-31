@@ -9,6 +9,49 @@ SKILL_DIR = ROOT / "skills" / "vercel-security-audit"
 SKILL = SKILL_DIR / "SKILL.md"
 
 
+class DocsDriftTests(unittest.TestCase):
+    """README and SKILL.md agree with the shipped tree and with each other (#82)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        cls.files = cls.readme.split("## Files\n", 1)[1].split("\n## ", 1)[0]
+        cls.skill = SKILL.read_text(encoding="utf-8")
+
+    def test_every_skill_file_and_test_is_listed(self):
+        shipped = [path for path in SKILL_DIR.rglob("*")
+                   if path.is_file() and "__pycache__" not in path.parts and path.suffix != ".pyc"]
+        self.assertGreater(len(shipped), 20)
+        for path in shipped:
+            with self.subTest(path=path.name):
+                self.assertIn(path.relative_to(ROOT).as_posix(), self.files)
+        for path in (ROOT / "tests").glob("test_*.py"):
+            with self.subTest(test=path.name):
+                self.assertIn(f"`{path.name}`", self.files)
+
+    def test_changelog_exists(self):
+        changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+        self.assertTrue(changelog.startswith("# Changelog"))
+        for number in (54, 76, 92, 102):
+            self.assertIn(f"#{number}", changelog)
+
+    def test_python_requirement_agrees(self):
+        for text in (self.readme, self.skill):
+            self.assertIn("`scripts/cli_read.py`", text)
+        self.assertIn("Python 3 (standard library only) for any CLI-based audit", self.readme)
+        self.assertIn("Python 3 and the readable bundled `scripts/cli_read.py` are required", self.skill)
+        self.assertNotIn("Python and a report-export browser are optional", self.readme)
+        self.assertNotIn("the renderer, Python 3 or a report-export browser", self.skill)
+        self.assertNotIn("Startup must read all four references", self.readme)
+        self.assertIn("asks for scope first", self.readme)
+
+    def test_skill_asks_for_scope_and_reads_the_checklist_once(self):
+        self.assertEqual(self.skill.count("Ask for scope first"), 1)
+        self.assertEqual(self.skill.count("Ask for the team slug first"), 1)
+        self.assertEqual(self.skill.count("the complete [checklist](references/checklist.md)"), 1)
+        self.assertNotIn("Read the complete [checklist]", self.skill)
+
+
 class PublicSkillTests(unittest.TestCase):
     def test_portable_frontmatter(self):
         text = SKILL.read_text()

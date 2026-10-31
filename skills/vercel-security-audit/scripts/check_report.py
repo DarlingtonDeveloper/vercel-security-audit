@@ -12,7 +12,7 @@ import sys
 # Resolve the sibling renderer from this file, not sys.path[0], so the helper
 # also works under python -I (which does not add the script directory).
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from render_report import ReportError, describe_os_error, safe_link
+from render_report import OWNER_ACCEPTED_MARKER, ReportError, describe_os_error, safe_link
 
 SKILL = Path(__file__).resolve().parents[1]
 MAX_BYTES = 8_000_000
@@ -367,7 +367,7 @@ def check_matrix(root, outcomes):
     if not tables:
         raise ReportError("No status matrix found. Open the report with the status matrix tables, before "
                           "the review summary and in the same second-level section.")
-    rows = {}
+    rows, accepted = {}, set()
     for table in tables:
         head, body = elements(table)
         table_groups = set()
@@ -377,6 +377,12 @@ def check_matrix(root, outcomes):
             if len(identifiers) != 1:
                 raise ReportError("Each status matrix row needs exactly one check ID in its first cell.")
             identifier, = identifiers
+            label = " ".join(cells[0].text.split())
+            if "owner-accepted" in label.lower():
+                if label.lower().count("owner-accepted") != 1 or not label.endswith(" " + OWNER_ACCEPTED_MARKER):
+                    raise CheckError("Owner-accepted marker must be exactly (owner-accepted) at the end of the Check cell.",
+                                     identifier)
+                accepted.add(identifier)
             group = next((name for name, topics in groups.items() if identifier in topics), None)
             if group is None:
                 raise ReportError("Status matrix has a row for an ID that is not in the bundled checklist.")
@@ -400,7 +406,10 @@ def check_matrix(root, outcomes):
                                      identifier, matrix, appendix)
                 raise CheckError("Status matrix shows a worse result than the appendix.",
                                  identifier, matrix, appendix)
-    return "matched all 28 checks"
+            if identifier in accepted and appendix != "needs_confirmation":
+                raise CheckError("Owner-accepted marker is on a check whose status is not needs_confirmation.",
+                                 identifier, matrix, appendix)
+    return "matched all 28 checks", sorted(accepted)
 
 
 def check_summary(summary, counts):
@@ -446,11 +455,11 @@ def main(argv=None):
         root = Document(read_text(args.html)).root
         check_passive(root)
         counts, outcomes = check_counts(root)
-        matrix_parity = check_matrix(root, outcomes)
+        matrix_parity, accepted = check_matrix(root, outcomes)
         if args.expected_summary:
             check_summary(read_json(args.expected_summary), counts)
         evidence_parity = check_evidence(read_json(args.evidence_json), outcomes) if args.evidence_json else "not checked; no evidence JSON supplied"
-        result = {"counts": counts, "matrix_parity": matrix_parity, "summary_parity": "matched" if args.expected_summary else "not checked; no expected summary supplied",
+        result = {"counts": counts, "matrix_parity": matrix_parity, "owner_accepted_markers": accepted, "summary_parity": "matched" if args.expected_summary else "not checked; no expected summary supplied",
                   "evidence_parity": evidence_parity, "passive_html": "matched bundled structural constraints",
                   "visual_qa": "not performed", "network_qa": "structural only; runtime not observed"}
     except ReportError as error:

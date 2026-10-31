@@ -18,6 +18,19 @@ class AliasLegendTests(unittest.TestCase):
             with self.subTest(clause=clause):
                 self.assertIn(clause, self.legend)
 
+    def test_cli_reader_aliases_need_an_owner_supplied_mapping(self):
+        """The reader never returns hostnames, so domain-N legend entries come only from the owner (#86)."""
+        for clause in ("(capabilities.md#what-counts-as-field-selection-before-exposure)",
+                       "The bundled CLI reader never returns hostnames", "`domain-N` aliases",
+                       "no legend entry for a `domain-N` alias can come from reader output",
+                       "ask the owner to supply the mapping", "supplied by owner",
+                       "Never read names some other way", "stay unmapped"):
+            with self.subTest(clause=clause):
+                self.assertIn(clause, self.legend)
+        reader = (SKILL / "scripts" / "cli_read.py").read_text()
+        self.assertIn("hostnames, registrars and creators never leave the reader", reader)
+        self.assertNotIn("--legend-file", reader)
+
     def test_legend_excludes_people_and_secrets(self):
         for clause in ("team, project, environment and domain aliases", "already returned by authorised inventory reads",
                        "Never include people", "credentials", "environment values"):

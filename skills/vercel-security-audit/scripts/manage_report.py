@@ -20,8 +20,8 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 # publish_new is shared with the renderer: one output per invocation avoids
 # multi-file partial publication; distinct paths may branch a revision.
-from render_report import (MAX_BYTES, STATUSES, ReportError, describe_os_error,
-                           publish_new, render_report)
+from render_report import (MAX_BYTES, OWNER_ACCEPTED_MARKER, STATUSES, ReportError,
+                           describe_os_error, publish_new, render_report)
 
 CORE_IDS = tuple(f"{domain}-{index:02}" for domain in
                  ("IAM", "CRE", "DEP", "FWB", "SRC", "SEC", "DOM", "OPS")
@@ -692,11 +692,16 @@ def _matrix_lines(report, checks):
     lines = ["## Status at a glance", "",
              "Each check's recorded status for the whole authorised scope. Schema version 1 stores one status "
              "per check, so there are no per-project columns; the appendix holds the evidence and is the counted outcome.", ""]
+    accepted = {record["check_id"] for record in report["review_summary"].get("owner_accepted", [])}
+    if accepted:
+        lines += [f"{OWNER_ACCEPTED_MARKER} marks a setting the owner has confirmed as deliberate, with a reason. "
+                  "Its status stays needs_confirmation; see Deliberate or owner-accepted settings.", ""]
     for identifiers, label in ((CORE_IDS, "Check"), (OPTIONAL_IDS, "Optional check")):
         if identifiers is OPTIONAL_IDS:
             lines += ["Optional checks, kept separate from the 24 core checks:", ""]
         lines += [f"| {label} | {report['scope_alias']} |", "| --- | --- |"]
-        lines += [f"| {identifier} {CHECK_TITLES[identifier]} | {checks[identifier]['status']} |"
+        lines += [f"| {identifier} {CHECK_TITLES[identifier]}{' ' + OWNER_ACCEPTED_MARKER if identifier in accepted else ''} "
+                  f"| {checks[identifier]['status']} |"
                   for identifier in identifiers]
         lines += [""]
     return lines
