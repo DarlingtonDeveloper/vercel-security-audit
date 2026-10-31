@@ -4,7 +4,7 @@ Community-maintained and unofficial. This project is not an official Vercel prod
 
 An Agent Skills community preview for reviewing your own Vercel team's configuration through the Vercel plugin/CLI and an authenticated browser. It produces an evidence-backed, guided action plan and leaves settings unchanged.
 
-This is an early, standalone community preview. It is not an official Vercel security certification or a continuously running monitoring service. It does not require Worldkit or employee access. Deterministic tests pass, but live host execution has not yet been evaluated.
+This is an early, standalone community preview. It is not an official Vercel security certification or a continuously running monitoring service. It does not require any Vercel employee access. Deterministic tests pass, but live host execution has not yet been evaluated.
 
 ## How it works
 
@@ -141,6 +141,7 @@ Repository only, not installed with the skill:
 - tests/: offline, standard-library unit tests (`test_*.py`), grouped roughly as packaging and install (`test_skill.py`, `test_install.py`, `test_isolated_mode.py`, `test_scope_first.py`, `test_team_first.py`, `test_cli_version.py`), the CLI reader and routing (`test_cli_reader.py`, `test_safe_pagination.py`, `test_security_check_mapping.py`, `test_domain_cli_reads.py`, `test_selection_gate.py`, `test_tool_routing.py`, `test_connector_recommendation.py`, `test_mcp_boundary.py`, `test_traffic_buckets.py`), browser and evidence policy (`test_browser_preflight.py`, `test_browser_privacy.py`, `test_browser_states.py`, `test_tabbed_views.py`, `test_navigation_map.py`, `test_evidence_policy.py`, `test_plan_awareness.py`, `test_plan_signals.py`, `test_incident_tiers.py`, `test_docs_agent_content.py`, `test_coverage_limits.py`, `test_optional_scope.py`, `test_owner_confirmations.py`, `test_inline_owner_round.py`, `test_deliberate_configuration.py`), and reports (`test_renderer.py`, `test_report_model.py`, `test_report_components.py`, `test_report_governance.py`, `test_report_qa.py`, `test_report_qa_diagnostics.py`, `test_diagnostics.py`, `test_matrix_parity.py`, `test_friendly_times.py`, `test_alias_legend.py`).
 - .github/workflows/tests.yml: runs the tests in GitHub Actions.
 - CHANGELOG.md: release notes.
+- SECURITY.md: how to report a vulnerability in this skill privately.
 
 CLI command syntax was inspected using installed Vercel CLI 62.7.0 help, without reading an account; later CLI versions were checked only where the references name them. Canonical CLI security and firewall documentation was fetched successfully. This is not a live security audit or proof of end-to-end host compatibility.
 
@@ -163,6 +164,8 @@ python3 -m unittest discover -s tests -v
 ```
 
 The tests need only the Python 3 standard library; the oldest tested version is Python 3.9. GitHub Actions runs the same suite on every pull request and push to `main` (`.github/workflows/tests.yml`), on Python 3.9, 3.13 and 3.14, with read-only permissions and no secrets. Windows is not in the matrix yet: the reader's tests use POSIX fake executables. HTML publishing falls back to exclusive create where hard links are unavailable (#85), but that has not been run on Windows in CI.
+
+One check, that the skill mentions no internal Vercel names, reads a maintainer-only list from `tests/private-markers.txt` (one name per line; gitignored, never committed). Without that file the check is skipped, so it runs locally for the maintainer and not in CI.
 
 These deterministic tests check packaging and content constraints. They do not execute an agent, authenticate a browser, query Vercel or prove behavioural compliance.
 
