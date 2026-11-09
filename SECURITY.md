@@ -1,7 +1,5 @@
 # Security policy
 
-This is a community-maintained, unofficial project. It is not a Vercel product, and reports about it are not handled by Vercel.
-
 ## Reporting a vulnerability in this skill
 
 Please report privately, not in a public issue or pull request. Use GitHub's private vulnerability reporting: open the repository's Security tab and choose "Report a vulnerability".
@@ -14,7 +12,7 @@ Useful reports include:
 
 Do not include real credentials, account data or customer information in a report. Synthetic examples are enough.
 
-This is maintained in spare time, so there is no guaranteed response time. Fixes are released on the `main` branch; there are no separately supported versions.
+Fixes are released on the `main` branch; there are no separately supported versions.
 
 ## Out of scope
 

@@ -200,7 +200,7 @@ Mandatory components and their fixed rules:
 10. Follow-up: Owner decisions needed, deferred checks and a suggested recheck, without implying monitoring or completed remediation.
 11. Owner confirmation questionnaire: all three question groups (CRE-01, IAM-02, OPS-01) with provided answers or explicit not-answered states.
 12. Appendix check outcomes: every one of the 24 core and four optional IDs exactly once, each as a third-level `ID - Title` heading with exactly one `Status:` line using the five statuses, inside second-level sections whose headings begin `Appendix`. This structure is fixed because the [report checker](report-design.md#count-comparison-contract) counts it. Keep technical evidence detail here rather than in the summary.
-13. Disclaimers: community-maintained and unofficial identity, not a certification or guarantee, no changes made, and nothing published or sent. The HTML shell adds its own header and footer; the Markdown must still carry these statements.
+13. Disclaimers: not a certification or guarantee, no changes made, and nothing published or sent. The HTML shell adds its own header and footer; the Markdown must still carry these statements.
 
 Flexible, provided the fixed rules hold:
 
@@ -243,4 +243,4 @@ Synthetic aliases stay mandatory in the report itself. When the report is for th
 
 ## Deliverable format
 
-Markdown is mandatory and remains the source deliverable. Styled HTML uses the bundled community template when Python 3 is available; read [report design](report-design.md) before rendering. PDF is optional, exported from that same HTML through an already-installed browser or renderer. Do not use a renderer that adds official Vercel branding or fetches remote assets. If rendering is unavailable, deliver Markdown without installing tools. Review all rendered pages for redaction and layout. An export is not permission to publish or send.
+Markdown is mandatory and remains the source deliverable. Styled HTML uses the bundled template when Python 3 is available; read [report design](report-design.md) before rendering. PDF is optional, exported from that same HTML through an already-installed browser or renderer. Do not use a renderer that adds logos or fetches remote assets. If rendering is unavailable, deliver Markdown without installing tools. Review all rendered pages for redaction and layout. An export is not permission to publish or send.

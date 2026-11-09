@@ -159,7 +159,7 @@ def check_passive(root):
         if any(value is None for value in node.attrs.values()):
             raise ReportError("Unexpected valueless attribute.")
         if re.search(r"logo", node.attrs.get("class", "") + " " + node.attrs.get("id", ""), re.I):
-            raise ReportError("Logo markup is unsuitable for the community report.")
+            raise ReportError("Logo markup is not allowed in the report.")
         if node.tag == "a" and (not safe_link(node.attrs.get("href"))
                                 or set(node.attrs.get("rel", "").split()) != {"noopener", "noreferrer"}):
             # Generated navigation anchors have no rel and remain same-document.
@@ -226,13 +226,12 @@ def check_passive(root):
     header, = root.find("header")
     footer, = root.find("footer")
     for node, phrases in ((header, (
-            "Community-maintained · Unofficial",
-            "Independently maintained. Not an official Vercel product or endorsed by Vercel.",
+            "Read-only configuration review",
             "This review is not a security certification or a guarantee of compliance.")),
-            (footer, ("Community-maintained · Unofficial", "Not endorsed by Vercel.",
+            (footer, ("Read-only configuration review", "Findings apply only to the scope and observation window",
                       "this report does not certify security or compliance."))):
         if any(phrase not in node.text for phrase in phrases):
-            raise ReportError("Required community/unofficial disclaimer is missing.")
+            raise ReportError("Required report disclosure is missing.")
 
 
 def elements(node):

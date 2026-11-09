@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render sanitised audit Markdown as offline, community-branded HTML.
+"""Render sanitised audit Markdown as offline, styled HTML.
 
 Standard library only. No network, JavaScript, raw HTML, images or subprocesses.
 This renderer is not a secret scanner: review and sanitise the source first.

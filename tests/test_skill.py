@@ -98,7 +98,6 @@ class PublicSkillTests(unittest.TestCase):
     def test_runtime_dependencies_are_capability_based(self):
         text = (ROOT / "README.md").read_text()
         self.assertIn("Grokbot: not established", text)
-        self.assertIn("Live execution has not been tested", text)
         self.assertIn("does not need desktop control", text)
         self.assertIn("and/or an installed Vercel CLI", text)
 
@@ -106,6 +105,15 @@ class PublicSkillTests(unittest.TestCase):
         for file in SKILL_DIR.rglob("*"):
             if file.is_file() and file.suffix not in {".woff2", ".pyc"} and "__pycache__" not in file.parts:
                 yield file, file.read_text().lower()
+
+    def test_no_community_or_unofficial_framing(self):
+        files = list(self.skill_texts()) + [(ROOT / name, (ROOT / name).read_text().lower())
+                                            for name in ("README.md", "SECURITY.md", "examples/security-audit.md")]
+        for file, text in files:
+            for phrase in ("unofficial", "community-maintained", "community preview", "community-branded",
+                           "not endorsed by vercel", "live execution has not been tested"):
+                with self.subTest(file=file.name, phrase=phrase):
+                    self.assertNotIn(phrase, text)
 
     def test_public_skill_has_no_local_paths(self):
         for file, text in self.skill_texts():

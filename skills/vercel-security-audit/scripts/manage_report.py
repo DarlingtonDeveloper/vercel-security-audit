@@ -791,7 +791,7 @@ def build_markdown(report, zone=None):
     summary, scope = report["review_summary"], report["scope"]
     checks = {check["id"]: check for check in report["checks"]}
     lines = ["# " + report["title"], "",
-             "Community-maintained and unofficial. Not endorsed by Vercel. Local draft; review before sharing.", ""]
+             "Read-only configuration review. Not a security certification. Local draft; review before sharing.", ""]
     lines += _matrix_lines(report, checks)
     lines += ["## Review summary", "",
              f"- Revision: {report['revision']}", f"- Scope alias: {report['scope_alias']}",

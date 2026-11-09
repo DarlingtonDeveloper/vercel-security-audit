@@ -1,11 +1,11 @@
 ---
 name: vercel-security-audit
-description: Community-maintained, unofficial review of an authorised Vercel team's security configuration using the Vercel plugin, CLI and authenticated browser. Use for a Vercel security audit, identity and deployment-protection review, firewall assessment, or guided security action plan. Produces an evidence-backed report without changing settings.
+description: Read-only review of an authorised Vercel team's security configuration using the Vercel plugin, CLI and authenticated browser. Use for a Vercel security audit, identity and deployment-protection review, firewall assessment, or guided security action plan. Produces an evidence-backed report without changing settings.
 ---
 
 # Vercel security audit
 
-Community-maintained and unofficial. Do not present this skill or its reports as an official Vercel audit, endorsement or certification.
+Do not present this skill or its reports as a security certification or a guarantee of compliance.
 
 Run a point-in-time, read-only configuration review of the user's authorised Vercel team. Prefer an existing authenticated MCP connector for supported safe reads; the CLI is a fallback, not a requirement. Use an authenticated browser for dashboard-only controls and evidence confirmation. Produce a prioritised, plain-language action plan with steps people can follow.
 
@@ -148,7 +148,7 @@ Finish one planned collection pass and reconcile every authorised checklist ID w
 
 Open with the status matrix of checks at team and project level, then lead with what is confirmed to be working and at most three initial priorities in a short, plain-language summary; keep technical detail in the appendix. Be reassuring without claiming everything is safe. Separate customer-coordinated steps from tasks needing IT or developers. Each recommendation includes a responsible role, numbered steps, a completion check and change/rollback considerations. Write in the requested language and technical level.
 
-Read [report design](references/report-design.md) for styled export. When Python 3 is available, use the bundled offline HTML renderer and Geist assets after reviewing the Markdown. Then run `scripts/check_report.py` on the HTML, with an `--expected-summary` file when structured counts exist; it also requires each status matrix row to match its appendix outcome. Its input formats, the `Appendix` heading rule and the matrix comparison are in report design's [nonvisual structural QA](references/report-design.md#nonvisual-structural-qa). Keep its community-maintained, unofficial identity; do not add official Vercel branding. PDF is optional and should be exported from that HTML through an installed, approved browser or renderer. Keep the Markdown if rendering is unavailable. Do not install packages or upload evidence merely to produce a PDF. Inspect all rendered pages and retain the source.
+Read [report design](references/report-design.md) for styled export. When Python 3 is available, use the bundled offline HTML renderer and Geist assets after reviewing the Markdown. Then run `scripts/check_report.py` on the HTML, with an `--expected-summary` file when structured counts exist; it also requires each status matrix row to match its appendix outcome. Its input formats, the `Appendix` heading rule and the matrix comparison are in report design's [nonvisual structural QA](references/report-design.md#nonvisual-structural-qa). Keep its header and footer disclosure; do not add logos or extra branding. PDF is optional and should be exported from that HTML through an installed, approved browser or renderer. Keep the Markdown if rendering is unavailable. Do not install packages or upload evidence merely to produce a PDF. Inspect all rendered pages and retain the source.
 
 Completion: the report includes the mandatory Coverage limits block for every source/feed, explicitly recording limits even when none are known, per-ID optional scope decisions, and all three Owner confirmation question groups with provided answers or explicit not-answered states. It identifies reviewed and unreviewed coverage, contains no secrets, and does not imply remediation or delivery happened.
 

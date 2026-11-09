@@ -184,8 +184,8 @@ class RendererHTMLTests(RendererCase):
         self.assertEqual(parsed.find("html")[0].attrs["lang"], "en")
         self.assertEqual(parsed.find("h1")[0].text, "Revue café — 安全")
         self.assert_navigation_resolves(parsed)
-        self.assertIn("Community-maintained", parsed.find("header")[0].text)
-        self.assertIn("Not endorsed by Vercel", parsed.find("footer")[0].text)
+        self.assertIn("Read-only configuration review", parsed.find("header")[0].text)
+        self.assertIn("does not certify security or compliance", parsed.find("footer")[0].text)
         self.assertEqual(len(parsed.find("a")), 2)  # One nav and one user-activated link.
 
     def test_first_line_h1_is_required(self):
