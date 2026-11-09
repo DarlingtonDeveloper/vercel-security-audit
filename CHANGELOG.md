@@ -4,6 +4,7 @@ Notable changes to the vercel-security-audit skill. There are no tagged releases
 
 ## Unreleased
 
+- Runtime: ports the four bundled scripts from Python to Node.js (22+, standard library only, ESM) under kebab-case names: `cli-read.mjs`, `render-report.mjs`, `check-report.mjs` and `manage-report.mjs`. Flags, exit codes, messages and output bytes match the Python versions, checked by differential runs against them before removal. The CLI reader runs with `NODE_OPTIONS` unset, replacing `python3 -I`. The test suite moves to `node:test` (`*.test.mjs`, 348 tests, the same count as before), CI runs on Node.js 22, 24 and 26, and the docs now name Node.js instead of Python 3.
 - Identity: removes the community-maintained and unofficial labels from the skill, references, report template, renderer and README. Reports keep a neutral read-only and non-certification disclosure, which `check_report.py` now validates instead.
 - Security check reader: documents all nine product check slugs from the CLI 65.7.0 source, maps each to a checklist ID, and adds `checklistId` to each check in the `security-check` read. Slugs not in the table are reported as `unmapped` instead of being dropped (issue #90).
 - Config-intent read: now a named exception to the pre-exposure gate, which needs the owner to confirm the files contain no inline secrets. Seeing a secret stops the read under the accidental-exposure procedure (issue #80).

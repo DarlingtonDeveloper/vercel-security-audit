@@ -1,6 +1,6 @@
 # Optional versioned report model
 
-Keep pre-sanitised evidence in a local JSON revision and rebuild the guided Markdown report with `scripts/manage_report.py`. Python 3 and its standard library are sufficient. JSON is optional: readable Markdown remains the mandatory deliverable and portable fallback when this script or file writing is unavailable. Follow the [report template](report-template.md) in either workflow.
+Keep pre-sanitised evidence in a local JSON revision and rebuild the guided Markdown report with `scripts/manage-report.mjs`. Node.js 22+ and its standard library are sufficient. JSON is optional: readable Markdown remains the mandatory deliverable and portable fallback when this script or file writing is unavailable. Follow the [report template](report-template.md) in either workflow.
 
 This is a reporting utility, not an evidence collector, secret scanner, semantic truth checker, or assurance of application security. It does not authenticate, request credentials, read account configuration, fetch URLs, execute commands from evidence, apply recommendations, or send reports. You must approve and sanitise metadata before it reaches the utility. Validation cannot establish that free text contains no secrets or personal information.
 
@@ -11,8 +11,8 @@ Resolve `skill_dir` from the installed skill location. Use an existing, trusted 
 Initialize an unreviewed draft:
 
 ```sh
-python3 "$skill_dir/scripts/manage_report.py" init --scope-alias example-team --title "Synthetic configuration review" -o report-v1.json
-python3 "$skill_dir/scripts/manage_report.py" validate report-v1.json
+node "$skill_dir/scripts/manage-report.mjs" init --scope-alias example-team --title "Synthetic configuration review" -o report-v1.json
+node "$skill_dir/scripts/manage-report.mjs" validate report-v1.json
 ```
 
 `init` creates schema version 1, revision 1, all 28 exact checklist IDs with status `not_reviewed`, empty evidence logs, no recommendations, and no authorization for optional source/application review. Replace the draft's scope and owner-authored narrative fields with verified, pre-sanitised content before sharing. Initial creation is not evidence or consent. `validate` checks structure without writing files or changing statuses.
@@ -48,10 +48,10 @@ Save the following as a new private `patch.json`. The example appends metadata t
 Append and rebuild, using fresh paths for each command:
 
 ```sh
-python3 "$skill_dir/scripts/manage_report.py" append report-v1.json --patch patch.json -o report-v2.json
-python3 "$skill_dir/scripts/manage_report.py" build report-v2.json -o security-audit-v2.md
-python3 "$skill_dir/scripts/manage_report.py" build report-v2.json --format html -o security-audit-v2.html
-python3 "$skill_dir/scripts/manage_report.py" export-summary report-v2.json -o coverage-v2.json
+node "$skill_dir/scripts/manage-report.mjs" append report-v1.json --patch patch.json -o report-v2.json
+node "$skill_dir/scripts/manage-report.mjs" build report-v2.json -o security-audit-v2.md
+node "$skill_dir/scripts/manage-report.mjs" build report-v2.json --format html -o security-audit-v2.html
+node "$skill_dir/scripts/manage-report.mjs" export-summary report-v2.json -o coverage-v2.json
 ```
 
 Each successful file-producing command prints `New private report artifact created. Review before sharing; Markdown remains required.` Validation prints `Report model is valid. Evidence truth and sanitisation still require human review.` Exit status is 0 on success, 1 on validation or I/O failure, and 2 on invalid command arguments. Diagnostics do not include source values, unknown keys, evidence, or paths. Use the schema reference below to resolve a structural failure; do not paste raw evidence into logs for debugging.
@@ -99,7 +99,7 @@ This unpublished schema version 1 has been corrected in place. Legacy files cont
 - `reviewed_at`, `method`, `overall_takeaway`: text. State the actual review window or that review has not occurred.
 - `confirmed_strengths`: a list of zero to 100 text entries. Include only evidence-backed strengths; the utility does not infer them from statuses.
 - `initial_priorities`: a list of zero to three text entries, ordered by owner-relevant impact and confidence.
-- `time_zone` (optional): the reader's IANA time zone name agreed at scope, such as `Europe/London`, used for the summary's friendly times. It must be an exact name listed by the host's standard-library time zone database; anything else fails validation with an error naming `review_summary.time_zone`. Omit it when the user gave no zone, and the agent host's zone is used and labelled as such. `init --time-zone Europe/London` records it at creation. Never set it from team, customer or account data.
+- `time_zone` (optional): the reader's IANA time zone name agreed at scope, such as `Europe/London`, used for the summary's friendly times. It must be an exact name listed by the host's system time zone database; anything else fails validation with an error naming `review_summary.time_zone`. Omit it when the user gave no zone, and the agent host's zone is used and labelled as such. `init --time-zone Europe/London` records it at creation. Never set it from team, customer or account data.
 - `owner_accepted` (optional): a list of zero to 28 objects, each with exactly `check_id` and `evidence_ref`, for settings the owner has confirmed as deliberate with a reason. `check_id` is an exact checklist ID, unique in the list, whose check status is `needs_confirmation`. `evidence_ref` names an `owner_statement` evidence entry on that same check, which holds the reason, statement time and scope. An accepted check cannot appear in any recommendation's `check_ids`. Omitting the field is the same as an empty list, so existing version 1 files stay valid. Source-code (`source_review`) evidence alone cannot be referenced as acceptance.
 
 `follow_up` requires three text fields: `owner_decisions`, `deferred_checks`, and `suggested_recheck`. They describe proposed next actions, not actions completed by the utility.
@@ -284,10 +284,10 @@ Input JSON and patch reads are bounded to 2,000,000 bytes before parsing. Normal
 Focused local tests, from the repository root:
 
 ```sh
-python3 -B -m unittest discover -s tests -p test_report_model.py -v
-python3 -B -m unittest discover -s tests -p test_report_governance.py -v
+node --test tests/report-model.test.mjs
+node --test tests/report-governance.test.mjs
 ```
 
-For cross-checkout structural integration, set `REPORT_QA_SCRIPT` to an existing public checkout's `scripts/check_report.py` when running the governance tests. The test imports it read-only, supplies derived core/optional counts, and validates the JSON-to-Markdown-to-HTML result. It does not copy or modify that tool; without the explicit path, only that integration test is skipped.
+For cross-checkout structural integration, set `REPORT_QA_SCRIPT` to an existing public checkout's `scripts/check-report.mjs` when running the governance tests. The test imports it read-only, supplies derived core/optional counts, and validates the JSON-to-Markdown-to-HTML result. It does not copy or modify that tool; without the explicit path, only that integration test is skipped.
 
-The deterministic tests cover normal and adversarial schema/CLI behavior, append-only history, governance roundtrips, per-ID consent boundaries, provided Owner answers, conflicts, exclusive concurrent publication, permissions, failure cleanup, and reuse of the renderer. They do not authenticate, perform a live audit, validate business intent, run a browser, or prove absence of secrets. The [report template](report-template.md) remains usable without JSON or Python.
+The deterministic tests cover normal and adversarial schema/CLI behavior, append-only history, governance roundtrips, per-ID consent boundaries, provided Owner answers, conflicts, exclusive concurrent publication, permissions, failure cleanup, and reuse of the renderer. They do not authenticate, perform a live audit, validate business intent, run a browser, or prove absence of secrets. The [report template](report-template.md) remains usable without JSON or Node.js.
