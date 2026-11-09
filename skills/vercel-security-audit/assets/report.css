@@ -1,4 +1,4 @@
-/* Community-owned styling, not an official Vercel design or brand asset.
+/* Report styling for the bundled offline renderer.
    The renderer prepends local, embedded @font-face declarations. */
 :root {
   color-scheme: light;
@@ -50,7 +50,7 @@ body {
   letter-spacing: .14em;
   line-height: 1.5;
 }
-.community-pill {
+.scope-pill {
   padding: 5px 11px;
   border: 1px solid #cddbd4;
   border-radius: 999px;
@@ -283,7 +283,7 @@ td .status-badge { white-space: nowrap; }
   .report-header { padding-bottom: 6mm; }
   .report-masthead { margin-bottom: 6mm; }
   .report-brand { color: #000; font-size: 8pt; }
-  .community-pill { background: #fff; color: #000; border-color: #888; font-size: 8pt; }
+  .scope-pill { background: #fff; color: #000; border-color: #888; font-size: 8pt; }
   h1 { max-width: none; font-size: 27pt; margin-bottom: 4mm; }
   h2 { font-size: 17pt; margin-bottom: 4mm; }
   h3 { font-size: 13pt; }

@@ -4,6 +4,7 @@ Notable changes to the vercel-security-audit skill. There are no tagged releases
 
 ## Unreleased
 
+- Identity: removes the community-maintained and unofficial labels from the skill, references, report template, renderer and README. Reports keep a neutral read-only and non-certification disclosure, which `check_report.py` now validates instead.
 - Security check reader: documents all nine product check slugs from the CLI 65.7.0 source, maps each to a checklist ID, and adds `checklistId` to each check in the `security-check` read. Slugs not in the table are reported as `unmapped` instead of being dropped (issue #90).
 - Config-intent read: now a named exception to the pre-exposure gate, which needs the owner to confirm the files contain no inline secrets. Seeing a secret stops the read under the accidental-exposure procedure (issue #80).
 - Status matrix: owner-accepted checks carry a fixed `(owner-accepted)` marker in the Check cell while their status stays `needs_confirmation`. `manage_report.py` emits it, and `check_report.py` validates it and lists the marked checks in `owner_accepted_markers` (issue #80).

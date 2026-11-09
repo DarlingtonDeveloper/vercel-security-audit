@@ -104,7 +104,7 @@ class RequiredComponentsTests(unittest.TestCase):
                        "## Initial priorities", "## Confirmed strengths", "### Optional scope decisions",
                        "## Coverage limits", "## Recommendations", "**Done when:**",
                        "## Appendix: required core checks", "### Owner confirmation questionnaire",
-                       "Community-maintained, unofficial", "nothing has been published or sent"):
+                       "Not a security certification", "nothing has been published or sent"):
             with self.subTest(marker=marker):
                 self.assertIn(marker, text)
         for identifier in ("DEP-04", "SRC-04", "SEC-04", "OPS-04"):

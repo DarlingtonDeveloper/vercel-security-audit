@@ -1,8 +1,8 @@
-# Community report design and offline export
+# Report design and offline export
 
 ## Identity
 
-Use the bundled, independently styled report. It uses Geist and Geist Mono typography but is community-maintained and unofficial. Preserve the header/footer disclosure. Do not add Vercel logos, official sign-offs, security scores or claims of certification. The official Vercel-authored design instructions at vercel.com/design.md are not the authorship instructions for this community report.
+Use the bundled report styling. It uses Geist and Geist Mono typography. Preserve the header/footer disclosure. Do not add logos, sign-offs, security scores or claims of certification.
 
 ## Reading order
 
@@ -124,7 +124,7 @@ Failures name the rule, the checklist ID and, for a mismatch, the two status key
 
 ### Passive document and identity checks
 
-The checker accepts only the bundled renderer's passive HTML dialect. It checks balanced tags, unique attributes/IDs, required landmarks, the renderer's exact table shape (wrapped tables directly in the report body, one header row of column headers, body rows of the same width, no other table attributes), resolved same-document links, a deny-by-default CSP before style content, and credential-free user-activated HTTPS links. It rejects scripts (including JSON script elements), event handlers, forms, frames, objects, images, SVG, linked styles, preload/preconnect elements, refresh directives and unexpected attributes. No image or official logo asset is permitted; logo-marked markup is also rejected. Preserve the required community/unofficial header and footer disclosure, non-endorsement and non-certification statements. Do not add an official logo, official sign-off or claim of certification in text either; human review still checks identity and unsupported claims.
+The checker accepts only the bundled renderer's passive HTML dialect. It checks balanced tags, unique attributes/IDs, required landmarks, the renderer's exact table shape (wrapped tables directly in the report body, one header row of column headers, body rows of the same width, no other table attributes), resolved same-document links, a deny-by-default CSP before style content, and credential-free user-activated HTTPS links. It rejects scripts (including JSON script elements), event handlers, forms, frames, objects, images, SVG, linked styles, preload/preconnect elements, refresh directives and unexpected attributes. No image or logo asset is permitted; logo-marked markup is also rejected. Preserve the required header and footer disclosure and non-certification statements. Do not add a logo, sign-off or claim of certification in text either; human review still checks identity and unsupported claims.
 
 Embedded CSS must match the installed bundled stylesheet and the three local WOFF2 font data declarations exactly. This conservative comparison rejects added `@import`, remote `url()`, CSS escapes, substituted fonts and extra style blocks without pretending to implement a general CSS parser. Locally modified branding/styles must be reviewed and reconciled with the trusted assets before export; do not weaken the checker to accept an arbitrary document. It is not a secret scanner, evidence validator, general HTML sanitizer or independent integrity check of a modified skill installation.
 
@@ -135,7 +135,7 @@ A pass is structural proof within this bounded generated dialect that no automat
 - Confirm the title, scope, dates and visible status labels agree with the sanitised Markdown and approved evidence.
 - Record separate core/optional counts for all five statuses; compare JSON if available using the contract above, and record any comparison not performed.
 - Confirm every recommendation includes its steps and completion check; do not promote unknowns to passing checks.
-- Preserve the required unofficial disclaimer and absence of official logos or sign-offs.
+- Preserve the required header/footer disclosure and absence of logos or sign-offs.
 - Run structural QA for CSP, embedded styles/fonts and absence of automatic external asset references. Record runtime network observation separately as performed or not performed; structural checks alone cannot establish zero observed requests.
 - If screenshots or an approved visual viewer are available, check wide/narrow layouts, overflow, clipping, grayscale readability, local font rendering, and every PDF page for orphaned headings and broken lists. Do not claim these checks based on HTML structure alone.
 - If screenshots/viewer are unavailable, explicitly record `Visual QA: not performed`, the blocker, and which layout/font/PDF checks remain unverified. The checker always emits `visual_qa: not performed`; it cannot certify a later human inspection.

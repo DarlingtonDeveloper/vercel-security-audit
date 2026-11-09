@@ -170,10 +170,10 @@ class ReportQATests(unittest.TestCase):
 
     def test_required_disclosures_and_no_logo(self):
         document = fixture()
-        for old in ('Community-maintained · Unofficial',
-                    'Not an official Vercel product or endorsed by Vercel.',
+        for old in ('Read-only configuration review',
                     'not a security certification or a guarantee of compliance.',
-                    'Not endorsed by Vercel.'):
+                    'Findings apply only to the scope and observation window',
+                    'this report does not certify security or compliance.'):
             with self.subTest(disclosure=old):
                 self.assertEqual(self.check(document.replace(old, '')).returncode, 1)
         self.assertEqual(self.check(document.replace('</header>', '<span class="official-logo">Vercel</span></header>')).returncode, 1)

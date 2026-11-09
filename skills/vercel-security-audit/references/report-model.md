@@ -2,7 +2,7 @@
 
 Keep pre-sanitised evidence in a local JSON revision and rebuild the guided Markdown report with `scripts/manage_report.py`. Python 3 and its standard library are sufficient. JSON is optional: readable Markdown remains the mandatory deliverable and portable fallback when this script or file writing is unavailable. Follow the [report template](report-template.md) in either workflow.
 
-This is a community-maintained, unofficial reporting utility, not an evidence collector, secret scanner, semantic truth checker, or assurance of application security. It does not authenticate, request credentials, read account configuration, fetch URLs, execute commands from evidence, apply recommendations, or send reports. You must approve and sanitise metadata before it reaches the utility. Validation cannot establish that free text contains no secrets or personal information.
+This is a reporting utility, not an evidence collector, secret scanner, semantic truth checker, or assurance of application security. It does not authenticate, request credentials, read account configuration, fetch URLs, execute commands from evidence, apply recommendations, or send reports. You must approve and sanitise metadata before it reaches the utility. Validation cannot establish that free text contains no secrets or personal information.
 
 ## Commands and fresh output paths
 

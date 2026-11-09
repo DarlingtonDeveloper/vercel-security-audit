@@ -6,4 +6,4 @@ Geist and Geist Mono are distributed under the SIL Open Font License 1.1. The up
 
 The font licence applies to the fonts independently of the MIT licence for this skill, its documentation and renderer. The MIT licence does not replace or modify the fonts' OFL terms.
 
-Font attribution is not an endorsement of the skill or its reports by Vercel, the Geist Project Authors or basement.studio. No Vercel logo is bundled.
+Font attribution is not an endorsement of the skill or its reports by the Geist Project Authors or basement.studio. No logo is bundled.

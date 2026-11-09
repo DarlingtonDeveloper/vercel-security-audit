@@ -305,4 +305,4 @@ Hand these three question groups, worded as in the skill's report template, to e
 - IAM-02 - Owner MFA policy and recovery: not answered; statement time unknown.
 - OPS-01 - Owner incident delivery responsibility: not answered; statement time unknown.
 
-Community-maintained, unofficial example. Not an official Vercel audit, endorsement, or certification. Local renderer preview only; nothing has been published or sent.
+Synthetic example. Not a security certification or a guarantee of compliance. Local renderer preview only; nothing has been published or sent.
