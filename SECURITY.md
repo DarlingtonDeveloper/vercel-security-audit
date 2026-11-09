@@ -6,7 +6,7 @@ Please report privately, not in a public issue or pull request. Use GitHub's pri
 
 Useful reports include:
 
-- A way for the bundled scripts (`scripts/cli_read.py`, `render_report.py`, `manage_report.py` or `check_report.py`) to print, save or send data outside their allow-lists, such as secret values, hostnames, names, emails or raw CLI output.
+- A way for the bundled scripts (`scripts/cli-read.mjs`, `render-report.mjs`, `manage-report.mjs` or `check-report.mjs`) to print, save or send data outside their allow-lists, such as secret values, hostnames, names, emails or raw CLI output.
 - Instructions in `SKILL.md` or `references/` that could lead an agent to change settings, deploy, contact people or expose sensitive data, contrary to the read-only boundary.
 - Generated reports that could include sensitive data despite the redaction rules.
 

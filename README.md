@@ -21,7 +21,7 @@ The public CLI already has security check and detailed firewall inspection comma
 - A host that loads standard SKILL.md instructions and reference files.
 - Your normal, authorised Vercel account access.
 - Vercel plugin read capabilities and/or an installed Vercel CLI. Minimum tested CLI version: 62.7.0 (help checked) and 65.0.0 (guided test run). Specific output shapes were also checked against CLI 65.3.1, and the security check slug list against the CLI 65.7.0 package source, without a further guided run. Updating to the latest CLI before an audit is recommended, not required. Older CLIs can lack the `security` command entirely (54.18.0 does); the skill then records that check as a capability gap with an "upgrade the CLI" note rather than guessing equivalent commands.
-- Python 3 (standard library only) for any CLI-based audit, because every CLI account read goes through the bundled reader `scripts/cli_read.py`, and for styled HTML export. It is optional only for audits that use an MCP connector, the plugin or the browser alone and produce a Markdown report.
+- Node.js 22+ (standard library only) for any CLI-based audit, because every CLI account read goes through the bundled reader `scripts/cli-read.mjs`, and for styled HTML export. It is optional only for audits that use an MCP connector, the plugin or the browser alone and produce a Markdown report.
 - Browser tools for dashboard-only evidence and human authentication handoff.
 - File writing for saved reports, or a conversation-only fallback.
 
@@ -86,7 +86,7 @@ test ! -e "$skill_library/vercel-security-audit" &&
 
 Use the host's documented library registration/reload procedure, then confirm it loads that directory's SKILL.md and can read its sibling helpers. A directory elsewhere on disk is not automatically discovered by every host. Resolve helper paths from the installed skill directory (following any host-created symlink), never from the audit project's working directory.
 
-At startup the skill confirms that every essential reference (all ten in `references/`, the ones the process links to) is present and readable, but does not read them yet: it asks for scope first and reads each reference in full at the step that needs it. Missing essential references produce an installation integrity error before account reads: reinstall or recopy the complete bundle. When the CLI route is used, Python 3 and `scripts/cli_read.py` are checked before the first CLI account read; without them CLI reads are unavailable and the affected checks go to other routes or are recorded as gaps. Missing renderer/assets/fonts or export tools only disable styled HTML/PDF export; warn and retain the Markdown report, without failing the audit or installing packages. A report-export browser is always optional.
+At startup the skill confirms that every essential reference (all ten in `references/`, the ones the process links to) is present and readable, but does not read them yet: it asks for scope first and reads each reference in full at the step that needs it. Missing essential references produce an installation integrity error before account reads: reinstall or recopy the complete bundle. When the CLI route is used, Node.js and `scripts/cli-read.mjs` are checked before the first CLI account read; without them CLI reads are unavailable and the affected checks go to other routes or are recorded as gaps. Missing renderer/assets/fonts or export tools only disable styled HTML/PDF export; warn and retain the Markdown report, without failing the audit or installing packages. A report-export browser is always optional.
 
 ### Vercel tools
 
@@ -109,7 +109,7 @@ Installation does not authenticate your Vercel account or run an audit. Complete
 
 ## Files
 
-Generated from `git ls-files skills`; `tests/test_skill.py` fails if a file under `skills/vercel-security-audit/` is missing from this list.
+Generated from `git ls-files skills`; `tests/skill.test.mjs` fails if a file under `skills/vercel-security-audit/` is missing from this list.
 
 The installed skill:
 
@@ -121,13 +121,13 @@ The installed skill:
 - skills/vercel-security-audit/references/mcp-boundary.md: MCP tool denylist and conditional metadata allowlist.
 - skills/vercel-security-audit/references/browser-evidence.md: pre-model browser gate, UI-state playbook, safe owner questions, inline owner round and accidental-exposure procedure.
 - skills/vercel-security-audit/references/evidence-assessment.md: status assignment, conflicting evidence, plan entitlements and owner acceptance.
-- skills/vercel-security-audit/references/report-model.md: optional versioned JSON report model for `manage_report.py`.
+- skills/vercel-security-audit/references/report-model.md: optional versioned JSON report model for `manage-report.mjs`.
 - skills/vercel-security-audit/references/report-template.md: required report components and an example layout.
 - skills/vercel-security-audit/references/report-design.md: report identity, offline rendering, structural QA and print checks.
-- skills/vercel-security-audit/scripts/cli_read.py: standard-library reader that runs one documented Vercel CLI read and prints only allow-listed fields. Every CLI account read goes through it.
-- skills/vercel-security-audit/scripts/render_report.py: standard-library Markdown-to-HTML renderer.
-- skills/vercel-security-audit/scripts/check_report.py: read-only structural QA for rendered HTML (counts, status matrix parity, passive HTML).
-- skills/vercel-security-audit/scripts/manage_report.py: optional JSON report model: validate, append evidence to a new revision and build Markdown or HTML.
+- skills/vercel-security-audit/scripts/cli-read.mjs: standard-library reader that runs one documented Vercel CLI read and prints only allow-listed fields. Every CLI account read goes through it.
+- skills/vercel-security-audit/scripts/render-report.mjs: standard-library Markdown-to-HTML renderer.
+- skills/vercel-security-audit/scripts/check-report.mjs: read-only structural QA for rendered HTML (counts, status matrix parity, passive HTML).
+- skills/vercel-security-audit/scripts/manage-report.mjs: optional JSON report model: validate, append evidence to a new revision and build Markdown or HTML.
 - skills/vercel-security-audit/assets/report.html and skills/vercel-security-audit/assets/report.css: HTML template and print styles.
 - skills/vercel-security-audit/assets/fonts/Geist-Regular.woff2, skills/vercel-security-audit/assets/fonts/Geist-SemiBold.woff2 and skills/vercel-security-audit/assets/fonts/GeistMono-Regular.woff2: pinned Geist fonts.
 - skills/vercel-security-audit/assets/fonts/OFL.txt, skills/vercel-security-audit/assets/fonts/LICENSE.txt, skills/vercel-security-audit/assets/fonts/README.md and skills/vercel-security-audit/assets/fonts/SOURCES.json: font licence notices and pinned provenance.
@@ -136,7 +136,7 @@ Repository only, not installed with the skill:
 
 - examples/security-audit.md: synthetic layout example, not a real audit.
 - evals/scenarios.md: behaviour scenarios for evaluating the skill in a host.
-- tests/: offline, standard-library unit tests (`test_*.py`), grouped roughly as packaging and install (`test_skill.py`, `test_install.py`, `test_isolated_mode.py`, `test_scope_first.py`, `test_team_first.py`, `test_cli_version.py`), the CLI reader and routing (`test_cli_reader.py`, `test_safe_pagination.py`, `test_security_check_mapping.py`, `test_domain_cli_reads.py`, `test_selection_gate.py`, `test_tool_routing.py`, `test_connector_recommendation.py`, `test_mcp_boundary.py`, `test_traffic_buckets.py`), browser and evidence policy (`test_browser_preflight.py`, `test_browser_privacy.py`, `test_browser_states.py`, `test_tabbed_views.py`, `test_navigation_map.py`, `test_evidence_policy.py`, `test_plan_awareness.py`, `test_plan_signals.py`, `test_incident_tiers.py`, `test_docs_agent_content.py`, `test_coverage_limits.py`, `test_optional_scope.py`, `test_owner_confirmations.py`, `test_inline_owner_round.py`, `test_deliberate_configuration.py`), and reports (`test_renderer.py`, `test_report_model.py`, `test_report_components.py`, `test_report_governance.py`, `test_report_qa.py`, `test_report_qa_diagnostics.py`, `test_diagnostics.py`, `test_matrix_parity.py`, `test_friendly_times.py`, `test_alias_legend.py`).
+- tests/: offline, standard-library Node.js tests (`*.test.mjs`, run with the built-in `node:test` runner), grouped roughly as packaging and install (`skill.test.mjs`, `install.test.mjs`, `isolated-mode.test.mjs`, `scope-first.test.mjs`, `team-first.test.mjs`, `cli-version.test.mjs`), the CLI reader and routing (`cli-reader.test.mjs`, `safe-pagination.test.mjs`, `security-check-mapping.test.mjs`, `domain-cli-reads.test.mjs`, `selection-gate.test.mjs`, `tool-routing.test.mjs`, `connector-recommendation.test.mjs`, `mcp-boundary.test.mjs`, `traffic-buckets.test.mjs`), browser and evidence policy (`browser-preflight.test.mjs`, `browser-privacy.test.mjs`, `browser-states.test.mjs`, `tabbed-views.test.mjs`, `navigation-map.test.mjs`, `evidence-policy.test.mjs`, `plan-awareness.test.mjs`, `plan-signals.test.mjs`, `incident-tiers.test.mjs`, `docs-agent-content.test.mjs`, `coverage-limits.test.mjs`, `optional-scope.test.mjs`, `owner-confirmations.test.mjs`, `inline-owner-round.test.mjs`, `deliberate-configuration.test.mjs`), and reports (`renderer.test.mjs`, `report-model.test.mjs`, `report-components.test.mjs`, `report-governance.test.mjs`, `report-qa.test.mjs`, `report-qa-diagnostics.test.mjs`, `diagnostics.test.mjs`, `matrix-parity.test.mjs`, `friendly-times.test.mjs`, `alias-legend.test.mjs`). `report-model-fixtures.mjs` holds shared fixtures for the report model tests.
 - .github/workflows/tests.yml: runs the tests in GitHub Actions.
 - CHANGELOG.md: release notes.
 - SECURITY.md: how to report a vulnerability in this skill privately.
@@ -147,10 +147,10 @@ CLI command syntax was inspected using installed Vercel CLI 62.7.0 help, without
 
 Markdown remains the required source. The bundled renderer adds a light, styled HTML report with Geist typography, clear status labels, guided recommendations and a technical appendix. It embeds the local fonts and their OFL notices, so the report does not fetch assets or use analytics.
 
-With Python 3 installed, preview the synthetic example from the repository root:
+With Node.js 22+ installed, preview the synthetic example from the repository root:
 
 ```sh
-python3 skills/vercel-security-audit/scripts/render_report.py examples/security-audit.md -o example-report.html
+node skills/vercel-security-audit/scripts/render-report.mjs examples/security-audit.md -o example-report.html
 ```
 
 The output path must be new. Open the HTML locally and, if needed, use an installed browser's print-to-PDF function. No logo, account access or external conversion service is involved. See the skill's references/report-design.md for limitations and export checks. Font licensing is documented in skills/vercel-security-audit/assets/fonts/README.md; the fonts retain their separate OFL licence.
@@ -158,10 +158,10 @@ The output path must be new. Open the HTML locally and, if needed, use an instal
 ## Validate
 
 ```sh
-python3 -m unittest discover -s tests -v
+node --test 'tests/*.test.mjs'
 ```
 
-The tests need only the Python 3 standard library; the oldest tested version is Python 3.9. GitHub Actions runs the same suite on every pull request and push to `main` (`.github/workflows/tests.yml`), on Python 3.9, 3.13 and 3.14, with read-only permissions and no secrets. Windows is not in the matrix yet: the reader's tests use POSIX fake executables. HTML publishing falls back to exclusive create where hard links are unavailable (#85), but that has not been run on Windows in CI.
+The tests need only the Node.js standard library; the oldest supported version is Node.js 22. GitHub Actions runs the same suite on every pull request and push to `main` (`.github/workflows/tests.yml`), on Node.js 22, 24 and 26, with read-only permissions and no secrets. Windows is not in the matrix yet: the reader's tests use POSIX fake executables. HTML publishing falls back to exclusive create where hard links are unavailable (#85), but that has not been run on Windows in CI.
 
 One check, that the skill mentions no internal Vercel names, reads a maintainer-only list from `tests/private-markers.txt` (one name per line; gitignored, never committed). Without that file the check is skipped, so it runs locally for the maintainer and not in CI.
 

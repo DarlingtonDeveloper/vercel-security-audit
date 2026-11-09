@@ -1,10 +1,9 @@
 __pycache__/
-*.py[cod]
 .env
 .env.*
 .vercel/
 reports/
-# Maintainer-only list of internal names the public skill must never mention (see tests/test_skill.py).
+# Maintainer-only list of internal names the public skill must never mention (see tests/skill.test.mjs).
 tests/private-markers.txt
 audit-output/
 /example-report.html

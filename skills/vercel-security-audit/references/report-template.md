@@ -24,7 +24,7 @@ Status order, least to most favourable: `action_recommended`, `needs_confirmatio
 
 Mark a check the owner has accepted as deliberate (see [Deliberate or owner-accepted settings](#deliberate-or-owner-accepted-settings)) by ending its Check cell with exactly `(owner-accepted)`, for example `| DEP-01 Deployment protection scope (owner-accepted) | needs_confirmation |`. The status cells keep the status key, which stays `needs_confirmation`; the marker is not a status and is never added to a check with any other appendix outcome. Unmarked rows are not accepted. When any row carries the marker, add one sentence before the table saying what it means.
 
-A row with several status cells summarises to its least favourable status; Team-wide and By project cells are skipped. That summary must equal the appendix outcome for the check, so record the least favourable project result in the appendix and explain the differences there. `scripts/check_report.py` enforces this on the rendered HTML; see [status matrix comparison](report-design.md#status-matrix-comparison).
+A row with several status cells summarises to its least favourable status; Team-wide and By project cells are skipped. That summary must equal the appendix outcome for the check, so record the least favourable project result in the appendix and explain the differences there. `scripts/check-report.mjs` enforces this on the rendered HTML; see [status matrix comparison](report-design.md#status-matrix-comparison).
 
 ## Review summary
 
@@ -169,7 +169,7 @@ For every answer, give the scope alias, role alias, UTC statement time and curre
 
 Repeat this compact record for every required core check, grouped under the eight domains in `checklist.md`. Include optional checks separately, even when not reviewed. Keep the topic IDs and give each check its own third-level heading.
 
-If you group checks under their own domain headings, make each one a second-level heading that begins `Appendix:`, for example `## Appendix: Identity and access` and `## Appendix: optional checks`. The renderer and `check_report.py` count check outcomes only under second-level headings that begin with Appendix; a check under any other heading is not counted and QA fails.
+If you group checks under their own domain headings, make each one a second-level heading that begins `Appendix:`, for example `## Appendix: Identity and access` and `## Appendix: optional checks`. The renderer and `check-report.mjs` count check outcomes only under second-level headings that begin with Appendix; a check under any other heading is not counted and QA fails.
 
 ### [ID] - [Check title]
 
@@ -243,4 +243,4 @@ Synthetic aliases stay mandatory in the report itself. When the report is for th
 
 ## Deliverable format
 
-Markdown is mandatory and remains the source deliverable. Styled HTML uses the bundled template when Python 3 is available; read [report design](report-design.md) before rendering. PDF is optional, exported from that same HTML through an already-installed browser or renderer. Do not use a renderer that adds logos or fetches remote assets. If rendering is unavailable, deliver Markdown without installing tools. Review all rendered pages for redaction and layout. An export is not permission to publish or send.
+Markdown is mandatory and remains the source deliverable. Styled HTML uses the bundled template when Node.js is available; read [report design](report-design.md) before rendering. PDF is optional, exported from that same HTML through an already-installed browser or renderer. Do not use a renderer that adds logos or fetches remote assets. If rendering is unavailable, deliver Markdown without installing tools. Review all rendered pages for redaction and layout. An export is not permission to publish or send.

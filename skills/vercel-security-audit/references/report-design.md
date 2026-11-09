@@ -17,12 +17,12 @@ Status labels distinguish Satisfactory, Action recommended, Needs confirmation, 
 
 ## Render from Markdown
 
-Resolve the installed skill directory from the host's actual skill location, not the current project. The renderer is scripts/render_report.py inside that directory. It needs Python 3 and only the standard library.
+Resolve the installed skill directory from the host's actual skill location, not the current project. The renderer is scripts/render-report.mjs inside that directory. It needs Node.js 22+ and only its standard library.
 
 Review the Markdown for secrets and unsupported claims first. The renderer escapes content but is not a secret scanner or evidence validator. Render only a sanitised report to a new path in a local, private output directory, not a shared or network folder:
 
 ```sh
-python3 "$skill_dir/scripts/render_report.py" "$report_md" -o "$report_html"
+node "$skill_dir/scripts/render-report.mjs" "$report_md" -o "$report_html"
 ```
 
 The output is a single self-contained HTML file. CSS, three local WOFF2 fonts and their licence text are embedded. Opening or rendering it requires no remote images, scripts, styles, font services or analytics. External documentation links are user-activated links, not loaded assets. Links with credentials or queries are omitted, images are omitted, and raw HTML is displayed as text.
@@ -55,7 +55,7 @@ Do not run that command without a bounded process supervisor. Resolve the browse
 
 `--disable-extensions` requests that ordinary extensions not load. It does **not** bypass managed device policy and may not suppress policy-installed extensions. A fresh profile does not exempt the browser from management. Stop on a device-policy restriction. Never change managed profiles, installed extensions, registry/preferences or policies to make printing work.
 
-Apply a finite wall-clock deadline (for example 45 seconds) using the host's approved process supervisor or Python's standard library. Scope termination to the process tree started for this attempt, never all browser processes. On timeout, terminate that owned process tree, allow at most five seconds for exit, then force-stop that same tree with another finite reap deadline. If termination cannot be confirmed, record it and stop; do not relaunch or delete a profile still in use. Remove only this attempt's temporary profile once its processes have exited. An interactive print attempt needs a deadline too: cancel and use the fallback if the dialog is unresponsive. Do not use browser virtual-time budgets as a substitute for a wall-clock deadline.
+Apply a finite wall-clock deadline (for example 45 seconds) using the host's approved process supervisor or the Node.js standard library. Scope termination to the process tree started for this attempt, never all browser processes. On timeout, terminate that owned process tree, allow at most five seconds for exit, then force-stop that same tree with another finite reap deadline. If termination cannot be confirmed, record it and stop; do not relaunch or delete a profile still in use. Remove only this attempt's temporary profile once its processes have exited. An interactive print attempt needs a deadline too: cancel and use the fallback if the dialog is unresponsive. Do not use browser virtual-time budgets as a substitute for a wall-clock deadline.
 
 Treat timeout, nonzero exit, absent/empty PDF or a file lacking a PDF signature as export failure, not a successful report. Even a nonempty PDF with a valid signature still needs page-by-page visual inspection. Use the HTML's A4 print CSS, disable browser URL/date headers and footers, and retain the community disclosure. Do not overwrite an existing deliverable.
 
@@ -72,8 +72,8 @@ Background-network flags and document CSP are not an operating-system network sa
 Run the bundled stdlib checker on the generated HTML before opening or printing it. It reads local files only, does not launch processes or browsers, and never writes a report, installs software, fetches links or uploads content:
 
 ```sh
-python3 -B "$skill_dir/scripts/check_report.py" "$report_html"
-python3 -B "$skill_dir/scripts/check_report.py" "$report_html" \
+node "$skill_dir/scripts/check-report.mjs" "$report_html"
+node "$skill_dir/scripts/check-report.mjs" "$report_html" \
   --expected-summary "$expected_summary_json" \
   --evidence-json "$sanitised_evidence_json"
 ```

@@ -14,22 +14,22 @@ concurrency:
 
 jobs:
   tests:
-    name: tests (Python ${{ matrix.python }})
+    name: tests (Node.js ${{ matrix.node }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        # Oldest tested version, the version used in review, and the current release.
-        python: ["3.9", "3.13", "3.14"]
+        # Oldest supported LTS, the active LTS, and the current release.
+        node: ["22", "24", "26"]
     steps:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-node@v5
         with:
-          python-version: ${{ matrix.python }}
-      - name: Compile bundled scripts
-        run: python -m py_compile skills/vercel-security-audit/scripts/*.py
+          node-version: ${{ matrix.node }}
+      - name: Syntax-check bundled scripts
+        run: for f in skills/vercel-security-audit/scripts/*.mjs; do node --check "$f"; done
       - name: Run tests
-        run: python -B -m unittest discover -s tests -v
+        run: node --test 'tests/*.test.mjs'
